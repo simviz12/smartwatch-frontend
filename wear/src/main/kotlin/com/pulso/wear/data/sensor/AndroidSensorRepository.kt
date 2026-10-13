@@ -48,13 +48,14 @@ class AndroidSensorRepository(
 
         val supportedTypes = mutableListOf<String>()
         try {
-            val capabilities = passiveMonitoringClient.capabilities.await()
-            val supportedPassiveTypes = capabilities.supportedDataTypesPassiveMonitoring
-            for (type in supportedPassiveTypes) {
+            val capabilitiesFuture: com.google.common.util.concurrent.ListenableFuture<androidx.health.services.client.data.PassiveMonitoringCapabilities> = passiveMonitoringClient.getCapabilitiesAsync()
+            val capabilities = capabilitiesFuture.await()
+            for (type in capabilities.supportedDataTypesPassiveMonitoring) {
                 supportedTypes.add(type.name)
             }
         } catch (e: Exception) {
             Log.w(TAG, "Error querying passive capabilities: ${e.message}")
+            supportedTypes.add("DataType.HEART_RATE_BPM (por defecto)")
         }
 
         val samsungSdkPresent = try {
