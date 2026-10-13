@@ -126,6 +126,19 @@ class SyncManager private constructor(private val context: Context) :
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to parse SamplesAck message", e)
             }
+        } else if (messageEvent.path == DataLayerContracts.COMMANDS_PATH) {
+            try {
+                val cmd = com.pulso.core.model.WatchCommand.fromByteArray(messageEvent.data)
+                Log.i(TAG, "Received command from phone: ${cmd.command}")
+                if (cmd.command == com.pulso.core.model.WatchCommand.CMD_RESET_BASELINE) {
+                    scope.launch {
+                        com.pulso.wear.data.baseline.WearBaselineManager.getInstance(context).resetBaseline()
+                        sendStatusUpdate(serviceRunning = isCollectionEnabled())
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to parse WatchCommand message", e)
+            }
         }
     }
 
@@ -212,12 +225,17 @@ class SyncManager private constructor(private val context: Context) :
                 val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
                 val batteryPct = if (level >= 0 && scale > 0) (level * 100 / scale) else 100
 
+                val baselineManager = com.pulso.wear.data.baseline.WearBaselineManager.getInstance(context)
+                val baseline = baselineManager.currentBaseline.value
+                val baselineStatusMap = baseline?.buckets?.mapKeys { it.key.name }
+
                 val status = WatchStatus(
                     batteryPct = batteryPct,
                     serviceRunning = serviceRunning,
                     lastWindowAt = lastWindowAt,
                     watchModel = "${Build.MANUFACTURER} ${Build.MODEL}",
                     permissions = mapOf("BODY_SENSORS" to true),
+                    baselineStatus = baselineStatusMap,
                     sentAt = System.currentTimeMillis()
                 )
 
@@ -228,7 +246,7 @@ class SyncManager private constructor(private val context: Context) :
                         status.toByteArray()
                     )
                 )
-                Log.d(TAG, "Sent WatchStatus to ${phoneNode.displayName}: battery=$batteryPct%, service=$serviceRunning")
+                Log.d(TAG, "Sent WatchStatus to ${phoneNode.displayName}: battery=$batteryPct%, service=$serviceRunning, buckets=${baselineStatusMap?.keys}")
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to send status update: ${e.message}")
             }

@@ -19,6 +19,9 @@ object DataLayerContracts {
     const val STATUS_PATH = "/pulso/v1/status"
     const val STATUS_SCHEMA_VERSION = 1
 
+    const val COMMANDS_PATH = "/pulso/v1/commands"
+    const val COMMANDS_SCHEMA_VERSION = 1
+
     object Source {
         const val WATCH = "watch"
         const val PHONE = "phone"
