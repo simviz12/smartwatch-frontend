@@ -10,6 +10,10 @@ kotlinxSerialization = "1.7.3"
 playServicesWearable = "18.2.0"
 composeWearOs = "1.4.0"
 wearToolingPreview = "1.0.0"
+healthServices = "1.0.0-rc01"
+room = "2.6.1"
+ksp = "2.0.21-1.0.27"
+concurrentFutures = "1.2.0"
 
 # Mobile Compose
 composeBom = "2024.10.01"
@@ -28,6 +32,11 @@ play-services-wearable = { group = "com.google.android.gms", name = "play-servic
 wear-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "composeWearOs" }
 wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "composeWearOs" }
 wear-compose-ui-tooling = { group = "androidx.wear.compose", name = "compose-ui-tooling", version.ref = "wearToolingPreview" }
+androidx-health-services = { group = "androidx.health", name = "health-services-client", version.ref = "healthServices" }
+androidx-concurrent-futures-ktx = { group = "androidx.concurrent", name = "concurrent-futures-ktx", version.ref = "concurrentFutures" }
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 
 # Mobile
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -46,3 +55,4 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
