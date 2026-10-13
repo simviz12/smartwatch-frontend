@@ -26,18 +26,7 @@ class WearDataListenerService : WearableListenerService() {
     }
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
-        if (messageEvent.path == DataLayerContracts.SAMPLES_ACK_PATH) {
-            try {
-                val ack = SamplesAck.fromByteArray(messageEvent.data)
-                Log.i(TAG, "WearDataListenerService received SamplesAck: batchId=${ack.batchId}, accepted=${ack.accepted}")
-                serviceScope.launch {
-                    val deleted = database.windowDao().deleteWindowsByBatchId(ack.batchId)
-                    Log.i(TAG, "Deleted $deleted synced windows after SamplesAck from phone")
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error handling SamplesAck", e)
-            }
-        }
+        syncManager.onMessageReceived(messageEvent)
     }
 
     companion object {

@@ -212,7 +212,7 @@ fun OnboardingScreen(onAcceptConsent: () -> Unit) {
         Spacer(modifier = Modifier.height(24.dp))
 
         Row(
-            verticalAlignment = Alignment.CenterVertizontally,
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
             Checkbox(
@@ -301,7 +301,7 @@ fun HoyScreen(
             Row(
                 modifier = Modifier.padding(12.dp).fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertizontally
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
                     Text("Mediciones hoy", fontSize = 11.sp, color = Color.Gray)

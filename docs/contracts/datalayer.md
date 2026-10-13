@@ -250,6 +250,64 @@ This document specifies the messages and data items exchanged between the Wear O
       "type": "object",
       "additionalProperties": { "type": "boolean" }
     },
+    "baselineStatus": {
+      "type": "object",
+      "description": "Status per bucket (NIGHT, MORNING, AFTERNOON, EVENING, SLEEP)",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "state": { "type": "string", "enum": ["LEARNING", "READY"] },
+          "windowCount": { "type": "integer" },
+          "requiredWindows": { "type": "integer" },
+          "daysCollected": { "type": "integer" },
+          "requiredDays": { "type": "integer" },
+          "progressPct": { "type": "number" },
+          "hrMedian": { "type": ["number", "null"] },
+          "hrMad": { "type": ["number", "null"] },
+          "rmssdMedian": { "type": ["number", "null"] },
+          "rmssdMad": { "type": ["number", "null"] }
+        },
+        "required": ["state", "windowCount", "requiredWindows", "daysCollected", "requiredDays", "progressPct"]
+      }
+    },
+    "sentAt": {
+      "type": "integer"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+---
+
+## 6. /pulso/v1/commands
+
+- **Type**: Message (`MessageClient`)
+- **Path**: `/pulso/v1/commands`
+- **Schema Version**: `1`
+- **Sender**: Android Phone (`"phone"`)
+- **Receiver**: Wear OS Watch (`"watch"`)
+- **Delivery Guarantees**: Point-to-point command execution.
+- **Commands**:
+  - `RESET_BASELINE`: Resets the local calculated baseline on the watch and triggers a new learning cycle.
+
+### JSON Schema
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WatchCommand",
+  "type": "object",
+  "required": ["schemaVersion", "command", "sentAt"],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "command": {
+      "type": "string",
+      "enum": ["RESET_BASELINE"]
+    },
     "sentAt": {
       "type": "integer"
     }

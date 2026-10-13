@@ -166,6 +166,7 @@ data class WatchStatus(
     val lastWindowAt: Long? = null,
     val watchModel: String,
     val permissions: Map<String, Boolean>,
+    val baselineStatus: Map<String, com.pulso.core.baseline.BucketStats>? = null,
     val sentAt: Long
 ) {
     init {
@@ -184,6 +185,34 @@ data class WatchStatus(
         }
 
         fun fromByteArray(bytes: ByteArray): WatchStatus {
+            return jsonSerializer.decodeFromString(bytes.decodeToString())
+        }
+    }
+}
+
+@Serializable
+data class WatchCommand(
+    val schemaVersion: Int = DataLayerContracts.COMMANDS_SCHEMA_VERSION,
+    val command: String,
+    val sentAt: Long = System.currentTimeMillis()
+) {
+    init {
+        require(schemaVersion == DataLayerContracts.COMMANDS_SCHEMA_VERSION) {
+            "Unsupported schemaVersion: $schemaVersion"
+        }
+    }
+
+    fun toByteArray(): ByteArray = jsonSerializer.encodeToString(this).encodeToByteArray()
+
+    companion object {
+        const val CMD_RESET_BASELINE = "RESET_BASELINE"
+
+        private val jsonSerializer = Json {
+            ignoreUnknownKeys = false
+            encodeDefaults = true
+        }
+
+        fun fromByteArray(bytes: ByteArray): WatchCommand {
             return jsonSerializer.decodeFromString(bytes.decodeToString())
         }
     }
