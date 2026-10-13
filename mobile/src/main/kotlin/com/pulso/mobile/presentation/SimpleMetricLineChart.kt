@@ -24,6 +24,7 @@ fun SimpleMetricLineChart(
     valueExtractor: (MeasurementWindow) -> Double?,
     lineColor: Color,
     emptyMessage: String,
+    baselineRange: Pair<Double, Double>? = null, // (min, max) typical resting range
     modifier: Modifier = Modifier
 ) {
     val validPoints = windows.mapNotNull { w ->
@@ -85,6 +86,20 @@ fun SimpleMetricLineChart(
             end = Offset(width, height),
             strokeWidth = 1.dp.toPx()
         )
+
+        // Draw baseline normal band if available
+        baselineRange?.let { (bMin, bMax) ->
+            val effectiveYMax = height - (((bMax.toFloat() - minValue) / valueSpan) * height).coerceIn(0f, height)
+            val effectiveYMin = height - (((bMin.toFloat() - minValue) / valueSpan) * height).coerceIn(0f, height)
+            val topY = minOf(effectiveYMax, effectiveYMin)
+            val bandHeight = kotlin.math.abs(effectiveYMax - effectiveYMin)
+
+            drawRect(
+                color = lineColor.copy(alpha = 0.15f),
+                topLeft = Offset(0f, topY),
+                size = androidx.compose.ui.geometry.Size(width, bandHeight)
+            )
+        }
 
         // Draw line chart
         val path = Path()

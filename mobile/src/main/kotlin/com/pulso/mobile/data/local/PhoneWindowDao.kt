@@ -26,6 +26,12 @@ interface PhoneWindowDao {
     @Query("SELECT COUNT(*) FROM phone_measurement_windows")
     suspend fun countWindows(): Int
 
+    @Query("SELECT * FROM phone_measurement_windows WHERE windowStart >= :sinceTimestamp ORDER BY windowStart ASC")
+    fun getWindowsSinceFlow(sinceTimestamp: Long): Flow<List<PhoneWindowEntity>>
+
+    @Query("SELECT * FROM phone_measurement_windows WHERE windowStart >= :sinceTimestamp ORDER BY windowStart ASC")
+    suspend fun getWindowsSince(sinceTimestamp: Long): List<PhoneWindowEntity>
+
     @Query("DELETE FROM phone_measurement_windows")
     suspend fun clearAll()
 }

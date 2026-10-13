@@ -17,9 +17,11 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 
 data class MobileUiState(
-    val selectedTab: Int = 0, // 0 = Hoy, 1 = Diagnóstico, 2 = Onboarding/Ajustes
+    val selectedTab: Int = 0, // 0 = Hoy, 1 = Diagnóstico, 2 = Ajustes, 3 = Línea Base
     val isTestingPing: Boolean = false,
-    val pingFeedback: String? = null
+    val pingFeedback: String? = null,
+    val isResettingBaseline: Boolean = false,
+    val resetFeedback: String? = null
 )
 
 class MobileViewModel(
@@ -49,8 +51,42 @@ class MobileViewModel(
         .map { it?.toDomain() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    // Compute rolling 14-day baseline from phone database
+    private val fourteenDaysAgo: Long
+        get() = System.currentTimeMillis() - (14L * 24 * 60 * 60 * 1000)
+
+    val phoneBaseline: StateFlow<com.pulso.core.baseline.Baseline?> = windowDao
+        .getWindowsSinceFlow(fourteenDaysAgo)
+        .map { list ->
+            val domainWindows = list.map { it.toDomain() }
+            com.pulso.core.baseline.BaselineEngine.update(domainWindows)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    // Compare phone baseline with watch reported baselineStatus
+    val baselineMismatch: StateFlow<String?> = kotlinx.coroutines.flow.combine(
+        phoneBaseline,
+        diagnosticsState
+    ) { baseline, diag ->
+        com.pulso.mobile.domain.baseline.BaselineMismatchDetector.checkMismatch(
+            phoneBaseline = baseline,
+            watchStatusMap = diag.lastWatchStatus?.baselineStatus
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     fun selectTab(index: Int) {
         _uiState.value = _uiState.value.copy(selectedTab = index)
+    }
+
+    fun resetBaseline() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isResettingBaseline = true, resetFeedback = null)
+            val sent = syncManager.sendResetBaselineCommand()
+            _uiState.value = _uiState.value.copy(
+                isResettingBaseline = false,
+                resetFeedback = if (sent) "Comando de reinicio enviado al reloj exitosamente" else "No se pudo comunicar con el reloj"
+            )
+        }
     }
 
     fun grantConsent() {

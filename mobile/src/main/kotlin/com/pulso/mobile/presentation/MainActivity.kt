@@ -78,6 +78,8 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
     val diagnostics by viewModel.diagnosticsState.collectAsState()
     val todayWindows by viewModel.todayWindows.collectAsState()
     val latestWindow by viewModel.latestWindow.collectAsState()
+    val phoneBaseline by viewModel.phoneBaseline.collectAsState()
+    val baselineMismatch by viewModel.baselineMismatch.collectAsState()
 
     val showOnboarding = !diagnostics.consentGranted
 
@@ -109,6 +111,12 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                         icon = { Text("📊") }
                     )
                     NavigationBarItem(
+                        selected = uiState.selectedTab == 3,
+                        onClick = { viewModel.selectTab(3) },
+                        label = { Text("Línea Base") },
+                        icon = { Text("📈") }
+                    )
+                    NavigationBarItem(
                         selected = uiState.selectedTab == 1,
                         onClick = { viewModel.selectTab(1) },
                         label = { Text("Diagnóstico") },
@@ -135,11 +143,17 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                     OnboardingScreen(onAcceptConsent = { viewModel.grantConsent() })
                 }
                 uiState.selectedTab == 0 -> {
-                    HoyScreen(windows = todayWindows, latestWindow = latestWindow)
+                    HoyScreen(
+                        windows = todayWindows,
+                        latestWindow = latestWindow,
+                        baseline = phoneBaseline,
+                        onNavigateToBaseline = { viewModel.selectTab(3) }
+                    )
                 }
                 uiState.selectedTab == 1 -> {
                     DiagnosticoScreen(
                         diagnostics = diagnostics,
+                        baselineMismatch = baselineMismatch,
                         isTestingPing = uiState.isTestingPing,
                         pingFeedback = uiState.pingFeedback,
                         onTestConnection = { viewModel.testWatchConnection() }
@@ -148,7 +162,15 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                 uiState.selectedTab == 2 -> {
                     AjustesScreen(
                         diagnostics = diagnostics,
+                        onNavigateToBaseline = { viewModel.selectTab(3) },
                         onRevokeConsent = { viewModel.revokeConsent() }
+                    )
+                }
+                uiState.selectedTab == 3 -> {
+                    BaselineScreen(
+                        baseline = phoneBaseline,
+                        onResetBaseline = { viewModel.resetBaseline() },
+                        resetFeedback = uiState.resetFeedback
                     )
                 }
             }
@@ -243,20 +265,54 @@ fun OnboardingScreen(onAcceptConsent: () -> Unit) {
 @Composable
 fun HoyScreen(
     windows: List<MeasurementWindow>,
-    latestWindow: MeasurementWindow?
+    latestWindow: MeasurementWindow?,
+    baseline: com.pulso.core.baseline.Baseline?,
+    onNavigateToBaseline: () -> Unit
 ) {
+    // Resolve current bucket for baseline overlay
+    val now = System.currentTimeMillis()
+    val currentBucket = com.pulso.core.baseline.BaselineEngine.resolveBucket(
+        timestamp = now,
+        activityState = latestWindow?.activityState ?: "PASSIVE"
+    )
+    val currentBucketStats = baseline?.buckets?.get(currentBucket)
+    val hrBaselineRange: Pair<Double, Double>? = if (currentBucketStats?.state == com.pulso.core.baseline.BaselineState.READY) {
+        val median = currentBucketStats.hrMedian ?: 70.0
+        val mad = currentBucketStats.hrMad ?: 5.0
+        Pair(median - (1.4826 * mad), median + (1.4826 * mad))
+    } else null
+
+    val hrvBaselineRange: Pair<Double, Double>? = if (currentBucketStats?.state == com.pulso.core.baseline.BaselineState.READY && currentBucketStats.rmssdMedian != null && currentBucketStats.rmssdMad != null) {
+        val median = currentBucketStats.rmssdMedian!!
+        val mad = currentBucketStats.rmssdMad!!
+        Pair(median - (1.4826 * mad), median + (1.4826 * mad))
+    } else null
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Text(
-            text = "Resumen de Hoy",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Resumen de Hoy",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Button(
+                onClick = onNavigateToBaseline,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                modifier = Modifier.height(34.dp)
+            ) {
+                Text("Tu línea base ›", fontSize = 12.sp, color = Color(0xFF38BDF8))
+            }
+        }
         Spacer(modifier = Modifier.height(12.dp))
 
         // Cards Row
@@ -316,27 +372,55 @@ fun HoyScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // HR Chart
-        Text("Frecuencia Cardíaca (BPM)", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+        // HR Chart with baseline overlay
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Frecuencia Cardíaca (BPM)", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+            if (hrBaselineRange != null) {
+                Text(
+                    "Franja: ${hrBaselineRange.first.toInt()}-${hrBaselineRange.second.toInt()} BPM",
+                    fontSize = 11.sp,
+                    color = Color(0xFF4ADE80)
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(6.dp))
         SimpleMetricLineChart(
             windows = windows,
             valueExtractor = { it.meanHr },
             lineColor = Color(0xFF4ADE80),
             emptyMessage = "Sin datos suficientes para graficar hoy",
+            baselineRange = hrBaselineRange,
             modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFF1E293B))
         )
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // HRV Chart
-        Text("Variabilidad RMSSD (ms)", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+        // HRV Chart with baseline overlay
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Variabilidad RMSSD (ms)", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+            if (hrvBaselineRange != null) {
+                Text(
+                    "Franja: ${hrvBaselineRange.first.toInt()}-${hrvBaselineRange.second.toInt()} ms",
+                    fontSize = 11.sp,
+                    color = Color(0xFF38BDF8)
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(6.dp))
         SimpleMetricLineChart(
             windows = windows,
             valueExtractor = { it.rmssd },
             lineColor = Color(0xFF38BDF8),
             emptyMessage = "HRV no disponible en este reloj o sin muestras IBI",
+            baselineRange = hrvBaselineRange,
             modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFF1E293B))
         )
     }
@@ -345,6 +429,7 @@ fun HoyScreen(
 @Composable
 fun DiagnosticoScreen(
     diagnostics: MobileDiagnosticsState,
+    baselineMismatch: String?,
     isTestingPing: Boolean,
     pingFeedback: String?,
     onTestConnection: () -> Unit
@@ -357,6 +442,21 @@ fun DiagnosticoScreen(
     ) {
         Text("Diagnóstico de Pulso", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Mismatch Alert if detected
+        baselineMismatch?.let { mismatchText ->
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF450A0A)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text("⚠️ Discrepancia de Línea Base", fontWeight = FontWeight.Bold, color = Color(0xFFEF4444), fontSize = 14.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(mismatchText, color = Color(0xFFFCA5A5), fontSize = 12.sp)
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+        }
 
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)), modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(14.dp)) {
@@ -425,6 +525,7 @@ fun DiagnosticoScreen(
 @Composable
 fun AjustesScreen(
     diagnostics: MobileDiagnosticsState,
+    onNavigateToBaseline: () -> Unit,
     onRevokeConsent: () -> Unit
 ) {
     Column(
@@ -433,7 +534,32 @@ fun AjustesScreen(
             .padding(20.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Text("Ajustes y Consentimiento", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text("Ajustes y Parámetros", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text("Línea Base Personal", fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Consulta el aprendizaje de tus rangos normales de pulso y variabilidad para cada horario del día.",
+                    fontSize = 12.sp,
+                    color = Color.LightGray
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Button(
+                    onClick = onNavigateToBaseline,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                    modifier = Modifier.fillMaxWidth().height(40.dp)
+                ) {
+                    Text("Ver mi línea base", fontSize = 13.sp)
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
@@ -442,7 +568,7 @@ fun AjustesScreen(
             color = Color.LightGray
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         Button(
             onClick = onRevokeConsent,

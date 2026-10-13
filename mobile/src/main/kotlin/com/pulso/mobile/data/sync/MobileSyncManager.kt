@@ -40,7 +40,8 @@ data class MobileDiagnosticsState(
     val lastSyncBatchId: String? = null,
     val lastSyncAcceptedCount: Int = 0,
     val lastPingRoundtripMs: Long? = null,
-    val lastError: String? = null
+    val lastError: String? = null,
+    val baselineMismatch: String? = null
 )
 
 class MobileSyncManager private constructor(private val context: Context) :
@@ -179,6 +180,36 @@ class MobileSyncManager private constructor(private val context: Context) :
             Log.e(TAG, "Ping test failed", e)
             _diagnosticsState.value = _diagnosticsState.value.copy(lastError = "Fallo de ping: ${e.message}")
             null
+        }
+    }
+
+    suspend fun sendResetBaselineCommand(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val nodes = Tasks.await(nodeClient.connectedNodes)
+            val watchNode = nodes.firstOrNull()
+            if (watchNode == null) {
+                _diagnosticsState.value = _diagnosticsState.value.copy(lastError = "No se puede reiniciar en el reloj: reloj no conectado")
+                return@withContext false
+            }
+
+            val cmd = com.pulso.core.model.WatchCommand(
+                command = com.pulso.core.model.WatchCommand.CMD_RESET_BASELINE,
+                sentAt = System.currentTimeMillis()
+            )
+
+            Tasks.await(
+                messageClient.sendMessage(
+                    watchNode.id,
+                    DataLayerContracts.COMMANDS_PATH,
+                    cmd.toByteArray()
+                )
+            )
+            Log.i(TAG, "Dispatched CMD_RESET_BASELINE to watch ${watchNode.id}")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to send reset baseline command", e)
+            _diagnosticsState.value = _diagnosticsState.value.copy(lastError = "Fallo enviando comando de reinicio: ${e.message}")
+            false
         }
     }
 
