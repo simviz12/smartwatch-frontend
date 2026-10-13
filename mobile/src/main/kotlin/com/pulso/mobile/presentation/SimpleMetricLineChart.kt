@@ -25,6 +25,7 @@ fun SimpleMetricLineChart(
     lineColor: Color,
     emptyMessage: String,
     baselineRange: Pair<Double, Double>? = null, // (min, max) typical resting range
+    breathingSessionTimes: List<Long> = emptyList(), // Timestamps of breathing sessions for markers
     modifier: Modifier = Modifier
 ) {
     val validPoints = windows.mapNotNull { w ->
@@ -125,5 +126,23 @@ fun SimpleMetricLineChart(
             color = lineColor,
             style = Stroke(width = 2.5.dp.toPx())
         )
+
+        // Draw breathing session markers if any fall within time span
+        for (sessionTime in breathingSessionTimes) {
+            if (sessionTime in minTime..maxTime) {
+                val x = ((sessionTime - minTime).toFloat() / timeSpan) * width
+                drawLine(
+                    color = Color(0xFF38BDF8).copy(alpha = 0.8f),
+                    start = Offset(x, 0f),
+                    end = Offset(x, height),
+                    strokeWidth = 2.dp.toPx()
+                )
+                drawCircle(
+                    color = Color(0xFF38BDF8),
+                    radius = 4.dp.toPx(),
+                    center = Offset(x, 6.dp.toPx())
+                )
+            }
+        }
     }
 }

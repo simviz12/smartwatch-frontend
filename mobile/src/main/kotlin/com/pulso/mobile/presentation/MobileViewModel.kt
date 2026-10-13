@@ -38,6 +38,10 @@ data class MobileUiState(
     val sensitivityPreset: SensitivityPreset = SensitivityPreset.MEDIA,
     val configSaveFeedback: String? = null,
     val isSavingConfig: Boolean = false,
+    // Breathing state
+    val breathingConfig: com.pulso.core.breathing.BreathingConfig = com.pulso.core.breathing.BreathingConfig(),
+    val isTestingBreathingOnWatch: Boolean = false,
+    val breathingTestFeedback: String? = null,
     // Replay Lab state
     val isRunningReplay: Boolean = false,
     val replayResult: ReplaySimulationResult? = null,
@@ -50,13 +54,22 @@ data class MobileUiState(
 class MobileViewModel(
     private val syncManager: MobileSyncManager,
     private val windowDao: PhoneWindowDao,
-    private val stressEventDao: PhoneStressEventDao
+    private val stressEventDao: PhoneStressEventDao,
+    private val breathingSessionDao: com.pulso.mobile.data.local.PhoneBreathingSessionDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(loadInitialUiState())
     val uiState: StateFlow<MobileUiState> = _uiState.asStateFlow()
 
     val diagnosticsState: StateFlow<MobileDiagnosticsState> = syncManager.diagnosticsState
+
+    val breathingSessions: StateFlow<List<com.pulso.mobile.data.local.PhoneBreathingSessionEntity>> = breathingSessionDao
+        .getAllSessionsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val weeklyBreathingSummary: StateFlow<com.pulso.mobile.domain.breathing.BreathingWeeklySummary> = breathingSessions
+        .map { list -> com.pulso.mobile.domain.breathing.BreathingHistoryAggregator.computeWeeklySummary(list) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.pulso.mobile.domain.breathing.BreathingWeeklySummary(0, 0, 0, 0))
 
     private val startOfToday: Long = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, 0)
@@ -123,7 +136,8 @@ class MobileViewModel(
         return MobileUiState(
             stressConfig = configSync.stressConfig,
             quietHours = configSync.quietHours ?: QuietHours(22, 0, 7, 0),
-            sensitivityPreset = preset
+            sensitivityPreset = preset,
+            breathingConfig = configSync.breathingConfig
         )
     }
 
@@ -237,6 +251,46 @@ class MobileViewModel(
         // Clear suggestion in diagnostics
     }
 
+    // --- Breathing Actions ---
+
+    fun updateBreathingPlan(planName: String) {
+        val current = _uiState.value.breathingConfig
+        val updated = current.copy(preferredPlanName = planName)
+        _uiState.value = _uiState.value.copy(breathingConfig = updated)
+        saveBreathingConfig(updated)
+    }
+
+    fun updateBreathingDuration(durationMinutes: Int) {
+        val current = _uiState.value.breathingConfig
+        val updated = current.copy(durationMinutes = durationMinutes)
+        _uiState.value = _uiState.value.copy(breathingConfig = updated)
+        saveBreathingConfig(updated)
+    }
+
+    fun updateBreathingIntensity(intensity: String) {
+        val current = _uiState.value.breathingConfig
+        val updated = current.copy(hapticIntensity = intensity)
+        _uiState.value = _uiState.value.copy(breathingConfig = updated)
+        saveBreathingConfig(updated)
+    }
+
+    private fun saveBreathingConfig(config: com.pulso.core.breathing.BreathingConfig) {
+        viewModelScope.launch {
+            syncManager.updateBreathingConfig(config)
+        }
+    }
+
+    fun testBreathingOnWatch() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isTestingBreathingOnWatch = true, breathingTestFeedback = null)
+            val success = syncManager.sendStartBreathingCommand()
+            _uiState.value = _uiState.value.copy(
+                isTestingBreathingOnWatch = false,
+                breathingTestFeedback = if (success) "Sesión iniciada en el reloj" else "No se pudo conectar al reloj"
+            )
+        }
+    }
+
     // --- Replay Lab Actions ---
 
     fun setReplayDaysRange(days: Int) {
@@ -345,11 +399,12 @@ class MobileViewModel(
         fun provideFactory(
             syncManager: MobileSyncManager,
             windowDao: PhoneWindowDao,
-            stressEventDao: PhoneStressEventDao
+            stressEventDao: PhoneStressEventDao,
+            breathingSessionDao: com.pulso.mobile.data.local.PhoneBreathingSessionDao
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return MobileViewModel(syncManager, windowDao, stressEventDao) as T
+                return MobileViewModel(syncManager, windowDao, stressEventDao, breathingSessionDao) as T
             }
         }
     }

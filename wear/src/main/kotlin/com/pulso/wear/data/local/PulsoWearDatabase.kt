@@ -5,11 +5,12 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [WindowEntity::class, StressEventEntity::class, InterventionFeedbackEntity::class], version = 3, exportSchema = false)
+@Database(entities = [WindowEntity::class, StressEventEntity::class, InterventionFeedbackEntity::class, BreathingSessionEntity::class], version = 4, exportSchema = false)
 abstract class PulsoWearDatabase : RoomDatabase() {
     abstract fun windowDao(): WindowDao
     abstract fun stressEventDao(): StressEventDao
     abstract fun interventionFeedbackDao(): InterventionFeedbackDao
+    abstract fun breathingSessionDao(): BreathingSessionDao
 
     companion object {
         @Volatile

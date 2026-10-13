@@ -61,7 +61,8 @@ class MainActivity : ComponentActivity() {
         MobileViewModel.provideFactory(
             syncManager = syncManager,
             windowDao = database.phoneWindowDao(),
-            stressEventDao = database.phoneStressEventDao()
+            stressEventDao = database.phoneStressEventDao(),
+            breathingSessionDao = database.phoneBreathingSessionDao()
         )
     }
 
@@ -87,6 +88,8 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
     val latestWindow by viewModel.latestWindow.collectAsState()
     val phoneBaseline by viewModel.phoneBaseline.collectAsState()
     val baselineMismatch by viewModel.baselineMismatch.collectAsState()
+    val breathingSessions by viewModel.breathingSessions.collectAsState()
+    val weeklyBreathingSummary by viewModel.weeklyBreathingSummary.collectAsState()
 
     val showOnboarding = !diagnostics.consentGranted
 
@@ -124,10 +127,10 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                         icon = { Text("⚡") }
                     )
                     NavigationBarItem(
-                        selected = uiState.selectedTab == 3,
-                        onClick = { viewModel.selectTab(3) },
-                        label = { Text("Línea Base") },
-                        icon = { Text("📈") }
+                        selected = uiState.selectedTab == 7,
+                        onClick = { viewModel.selectTab(7) },
+                        label = { Text("Respirar") },
+                        icon = { Text("🫁") }
                     )
                     NavigationBarItem(
                         selected = uiState.selectedTab == 1,
@@ -160,6 +163,7 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                         windows = todayWindows,
                         latestWindow = latestWindow,
                         baseline = phoneBaseline,
+                        breathingSessionTimes = breathingSessions.map { it.completedAt },
                         onNavigateToBaseline = { viewModel.selectTab(3) }
                     )
                 }
@@ -191,6 +195,7 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                         onSaveConfig = { viewModel.saveConfig() },
                         onOpenLab = { viewModel.selectTab(5) },
                         onNavigateToBaseline = { viewModel.selectTab(3) },
+                        onOpenBreathing = { viewModel.selectTab(7) },
                         onCancelSnooze = { viewModel.cancelSnooze() },
                         onApplyAdaptiveSuggestion = { viewModel.applyAdaptiveSuggestion() },
                         onDismissAdaptiveSuggestion = { viewModel.dismissAdaptiveSuggestion() },
@@ -231,6 +236,19 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                 uiState.selectedTab == 6 -> {
                     ChatPlaceholderScreen(
                         onBack = { viewModel.selectTab(0) }
+                    )
+                }
+                uiState.selectedTab == 7 -> {
+                    com.pulso.mobile.presentation.components.BreathingScreen(
+                        currentConfig = uiState.breathingConfig,
+                        sessions = breathingSessions,
+                        weeklySummary = weeklyBreathingSummary,
+                        isTestingOnWatch = uiState.isTestingBreathingOnWatch,
+                        testingFeedback = uiState.breathingTestFeedback,
+                        onUpdatePlan = { viewModel.updateBreathingPlan(it) },
+                        onUpdateDuration = { viewModel.updateBreathingDuration(it) },
+                        onUpdateIntensity = { viewModel.updateBreathingIntensity(it) },
+                        onTestOnWatch = { viewModel.testBreathingOnWatch() }
                     )
                 }
             }
@@ -327,6 +345,7 @@ fun HoyScreen(
     windows: List<MeasurementWindow>,
     latestWindow: MeasurementWindow?,
     baseline: com.pulso.core.baseline.Baseline?,
+    breathingSessionTimes: List<Long> = emptyList(),
     onNavigateToBaseline: () -> Unit
 ) {
     // Resolve current bucket for baseline overlay
@@ -432,7 +451,7 @@ fun HoyScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // HR Chart with baseline overlay
+        // HR Chart with baseline overlay and breathing markers
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -454,12 +473,13 @@ fun HoyScreen(
             lineColor = Color(0xFF4ADE80),
             emptyMessage = "Sin datos suficientes para graficar hoy",
             baselineRange = hrBaselineRange,
+            breathingSessionTimes = breathingSessionTimes,
             modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFF1E293B))
         )
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // HRV Chart with baseline overlay
+        // HRV Chart with baseline overlay and breathing markers
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -481,6 +501,7 @@ fun HoyScreen(
             lineColor = Color(0xFF38BDF8),
             emptyMessage = "HRV no disponible en este reloj o sin muestras IBI",
             baselineRange = hrvBaselineRange,
+            breathingSessionTimes = breathingSessionTimes,
             modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFF1E293B))
         )
     }
@@ -587,6 +608,21 @@ fun DiagnosticoScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)), modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text("Respiración y Capacidad Háptica", fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("• Capacidad háptica reloj: ${diagnostics.watchHapticCapability ?: "No reportada todavía"}", color = Color.White, fontSize = 12.sp)
+                Text("• Total sesiones registradas: ${diagnostics.totalBreathingSessionsStored}", color = Color.White, fontSize = 12.sp)
+                diagnostics.lastBreathingSession?.let { session ->
+                    val dateStr = Date(session.completedAt).toString()
+                    Text("• Última sesión: ${session.planName} (${session.completedCycles}/${session.targetCycles} ciclos, $dateStr)", color = Color(0xFF4ADE80), fontSize = 12.sp)
+                } ?: Text("• Última sesión: Ninguna registrada aún", color = Color.LightGray, fontSize = 12.sp)
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
@@ -625,6 +661,7 @@ fun AjustesScreen(
     onSaveConfig: () -> Unit,
     onOpenLab: () -> Unit,
     onNavigateToBaseline: () -> Unit,
+    onOpenBreathing: () -> Unit,
     onCancelSnooze: () -> Unit,
     onApplyAdaptiveSuggestion: () -> Unit,
     onDismissAdaptiveSuggestion: () -> Unit,
@@ -658,6 +695,31 @@ fun AjustesScreen(
             onApplyAdaptiveSuggestion = onApplyAdaptiveSuggestion,
             onDismissAdaptiveSuggestion = onDismissAdaptiveSuggestion
         )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text("Respiración Guiada Háptica", fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Configura patrones de respiración (Calma 4-6, Cuadrada, etc.), duración, intensidad y prueba sesiones en el reloj.",
+                    fontSize = 12.sp,
+                    color = Color.LightGray
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Button(
+                    onClick = onOpenBreathing,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D9488)),
+                    modifier = Modifier.fillMaxWidth().height(40.dp)
+                ) {
+                    Text("Configurar y ver historial de respiración ›", fontSize = 13.sp)
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(14.dp))
 

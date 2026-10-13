@@ -139,6 +139,14 @@ class SyncManager private constructor(private val context: Context) :
                         com.pulso.wear.data.baseline.WearBaselineManager.getInstance(context).resetBaseline()
                         sendStatusUpdate(serviceRunning = isCollectionEnabled())
                     }
+                } else if (cmd.command == com.pulso.core.model.WatchCommand.CMD_START_BREATHING) {
+                    scope.launch {
+                        val openIntent = Intent(context, com.pulso.wear.presentation.MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            putExtra("route", "breathing")
+                        }
+                        context.startActivity(openIntent)
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to parse WatchCommand message", e)
@@ -167,6 +175,16 @@ class SyncManager private constructor(private val context: Context) :
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to parse FeedbackAck message", e)
+            }
+        } else if (messageEvent.path == DataLayerContracts.BREATHING_ACK_PATH) {
+            try {
+                val ack = com.pulso.core.breathing.BreathingAck.fromByteArray(messageEvent.data)
+                Log.i(TAG, "Received BreathingAck: sessionId=${ack.sessionId}")
+                scope.launch {
+                    database.breathingSessionDao().markSessionSynced(ack.sessionId)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to parse BreathingAck message", e)
             }
         }
     }
@@ -215,6 +233,30 @@ class SyncManager private constructor(private val context: Context) :
             true
         } catch (e: Exception) {
             Log.w(TAG, "Failed to send WatchCommand to phone: ${e.message}")
+            false
+        }
+    }
+
+    suspend fun sendBreathingSession(record: com.pulso.core.breathing.BreathingSessionRecord): Boolean = withContext(Dispatchers.IO) {
+        val connectedNodes = try {
+            Tasks.await(nodeClient.connectedNodes)
+        } catch (e: Exception) {
+            emptyList()
+        }
+        val phoneNode = connectedNodes.firstOrNull() ?: return@withContext false
+
+        try {
+            Tasks.await(
+                messageClient.sendMessage(
+                    phoneNode.id,
+                    DataLayerContracts.BREATHING_PATH,
+                    record.toByteArray()
+                )
+            )
+            Log.i(TAG, "Sent BreathingSessionRecord to ${phoneNode.displayName}: sessionId=${record.sessionId}")
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to send BreathingSessionRecord to phone: ${e.message}")
             false
         }
     }
@@ -340,6 +382,17 @@ class SyncManager private constructor(private val context: Context) :
                 val baseline = baselineManager.currentBaseline.value
                 val baselineStatusMap = baseline?.buckets?.mapKeys { it.key.name }
 
+                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val vm = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager
+                    vm?.defaultVibrator ?: (context.getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator)
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+                }
+                val hasAmplitudeControl = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator?.hasAmplitudeControl() ?: false
+                } else false
+
                 val status = WatchStatus(
                     batteryPct = batteryPct,
                     serviceRunning = serviceRunning,
@@ -347,6 +400,7 @@ class SyncManager private constructor(private val context: Context) :
                     watchModel = "${Build.MANUFACTURER} ${Build.MODEL}",
                     permissions = mapOf("BODY_SENSORS" to true),
                     baselineStatus = baselineStatusMap,
+                    hasAmplitudeControl = hasAmplitudeControl,
                     sentAt = System.currentTimeMillis()
                 )
 

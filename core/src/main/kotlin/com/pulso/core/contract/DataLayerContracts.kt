@@ -34,6 +34,12 @@ object DataLayerContracts {
     const val FEEDBACK_ACK_PATH = "/pulso/v1/feedback-ack"
     const val FEEDBACK_ACK_SCHEMA_VERSION = 1
 
+    const val BREATHING_PATH = "/pulso/v1/breathing"
+    const val BREATHING_SCHEMA_VERSION = 1
+
+    const val BREATHING_ACK_PATH = "/pulso/v1/breathing-ack"
+    const val BREATHING_ACK_SCHEMA_VERSION = 1
+
     object Source {
         const val WATCH = "watch"
         const val PHONE = "phone"
