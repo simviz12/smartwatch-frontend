@@ -170,6 +170,7 @@ data class WatchStatus(
     val permissions: Map<String, Boolean>,
     val baselineStatus: Map<String, com.pulso.core.baseline.BucketStats>? = null,
     val stressConfigVersion: Int? = null,
+    val hasAmplitudeControl: Boolean? = null,
     val sentAt: Long
 ) {
     init {
@@ -209,6 +210,7 @@ data class WatchCommand(
 
     companion object {
         const val CMD_RESET_BASELINE = "RESET_BASELINE"
+        const val CMD_START_BREATHING = "START_BREATHING"
 
         private val jsonSerializer = Json {
             ignoreUnknownKeys = false

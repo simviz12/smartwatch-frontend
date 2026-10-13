@@ -139,6 +139,14 @@ class SyncManager private constructor(private val context: Context) :
                         com.pulso.wear.data.baseline.WearBaselineManager.getInstance(context).resetBaseline()
                         sendStatusUpdate(serviceRunning = isCollectionEnabled())
                     }
+                } else if (cmd.command == com.pulso.core.model.WatchCommand.CMD_START_BREATHING) {
+                    scope.launch {
+                        val openIntent = Intent(context, com.pulso.wear.presentation.MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            putExtra("route", "breathing")
+                        }
+                        context.startActivity(openIntent)
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to parse WatchCommand message", e)
@@ -374,6 +382,17 @@ class SyncManager private constructor(private val context: Context) :
                 val baseline = baselineManager.currentBaseline.value
                 val baselineStatusMap = baseline?.buckets?.mapKeys { it.key.name }
 
+                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val vm = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager
+                    vm?.defaultVibrator ?: (context.getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator)
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+                }
+                val hasAmplitudeControl = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator?.hasAmplitudeControl() ?: false
+                } else false
+
                 val status = WatchStatus(
                     batteryPct = batteryPct,
                     serviceRunning = serviceRunning,
@@ -381,6 +400,7 @@ class SyncManager private constructor(private val context: Context) :
                     watchModel = "${Build.MANUFACTURER} ${Build.MODEL}",
                     permissions = mapOf("BODY_SENSORS" to true),
                     baselineStatus = baselineStatusMap,
+                    hasAmplitudeControl = hasAmplitudeControl,
                     sentAt = System.currentTimeMillis()
                 )
 

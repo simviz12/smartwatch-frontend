@@ -52,7 +52,10 @@ data class MobileDiagnosticsState(
     val hasPendingConfig: Boolean = false,
     val lastFeedbackReceived: com.pulso.core.intervention.InterventionFeedback? = null,
     val activeSnoozeUntil: Long? = null,
-    val adaptiveSuggestion: com.pulso.core.intervention.AdaptiveSuggestion? = null
+    val adaptiveSuggestion: com.pulso.core.intervention.AdaptiveSuggestion? = null,
+    val lastBreathingSession: com.pulso.core.breathing.BreathingSessionRecord? = null,
+    val totalBreathingSessionsStored: Int = 0,
+    val watchHapticCapability: String? = null // "Control de amplitud analógico" or "Modulación por pulsos (sin amplitud)"
 )
 
 class MobileSyncManager private constructor(private val context: Context) :
@@ -135,14 +138,35 @@ class MobileSyncManager private constructor(private val context: Context) :
         val qEndM = sharedPrefs.getInt(KEY_QUIET_END_M, 0)
         val quiet = com.pulso.core.model.QuietHours(qStartH, qStartM, qEndH, qEndM)
 
+        val breathingPlanName = sharedPrefs.getString(KEY_BREATHING_PLAN, "Calma 4-6") ?: "Calma 4-6"
+        val breathingDuration = sharedPrefs.getInt(KEY_BREATHING_DURATION, 2)
+        val breathingIntensity = sharedPrefs.getString(KEY_BREATHING_INTENSITY, "MEDIUM") ?: "MEDIUM"
+        val breathing = com.pulso.core.breathing.BreathingConfig(
+            preferredPlanName = breathingPlanName,
+            durationMinutes = breathingDuration,
+            hapticIntensity = breathingIntensity
+        )
+
         return ConfigSync(
             collectionEnabled = granted,
             consentVersion = consentVer,
             windowMinutes = 5,
             quietHours = quiet,
             stressConfig = stressConfig,
+            breathingConfig = breathing,
             updatedAt = sharedPrefs.getLong(KEY_CONFIG_UPDATED_AT, System.currentTimeMillis())
         )
+    }
+
+    suspend fun updateBreathingConfig(
+        breathingConfig: com.pulso.core.breathing.BreathingConfig
+    ): Boolean = withContext(Dispatchers.IO) {
+        val current = loadPersistedConfig()
+        val newConfig = current.copy(
+            breathingConfig = breathingConfig,
+            updatedAt = System.currentTimeMillis()
+        )
+        persistAndSendConfig(newConfig)
     }
 
     suspend fun updateStressAndQuietConfig(
@@ -161,6 +185,9 @@ class MobileSyncManager private constructor(private val context: Context) :
     private suspend fun persistAndSendConfig(config: ConfigSync): Boolean {
         sharedPrefs.edit()
             .putString(KEY_STRESS_CONFIG, kotlinx.serialization.json.Json.encodeToString(config.stressConfig))
+            .putString(KEY_BREATHING_PLAN, config.breathingConfig.preferredPlanName)
+            .putInt(KEY_BREATHING_DURATION, config.breathingConfig.durationMinutes)
+            .putString(KEY_BREATHING_INTENSITY, config.breathingConfig.hapticIntensity)
             .putLong(KEY_CONFIG_UPDATED_AT, config.updatedAt)
             .apply()
 
@@ -295,6 +322,72 @@ class MobileSyncManager private constructor(private val context: Context) :
             DataLayerContracts.EVENTS_PATH -> handleEventsMessage(messageEvent)
             DataLayerContracts.FEEDBACK_PATH -> handleFeedbackMessage(messageEvent)
             DataLayerContracts.COMMANDS_PATH -> handleWatchCommandsMessage(messageEvent)
+            DataLayerContracts.BREATHING_PATH -> handleBreathingSessionMessage(messageEvent)
+        }
+    }
+
+    suspend fun sendStartBreathingCommand(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val nodes = Tasks.await(nodeClient.connectedNodes)
+            val watchNode = nodes.firstOrNull()
+            if (watchNode == null) {
+                _diagnosticsState.value = _diagnosticsState.value.copy(lastError = "No se puede iniciar respiración: reloj no conectado")
+                return@withContext false
+            }
+
+            val cmd = com.pulso.core.model.WatchCommand(
+                command = com.pulso.core.model.WatchCommand.CMD_START_BREATHING,
+                sentAt = System.currentTimeMillis()
+            )
+
+            Tasks.await(
+                messageClient.sendMessage(
+                    watchNode.id,
+                    DataLayerContracts.COMMANDS_PATH,
+                    cmd.toByteArray()
+                )
+            )
+            Log.i(TAG, "Dispatched CMD_START_BREATHING to watch ${watchNode.id}")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to send start breathing command", e)
+            _diagnosticsState.value = _diagnosticsState.value.copy(lastError = "Fallo enviando comando de respiración: ${e.message}")
+            false
+        }
+    }
+
+    private fun handleBreathingSessionMessage(messageEvent: MessageEvent) {
+        scope.launch {
+            try {
+                val record = com.pulso.core.breathing.BreathingSessionRecord.fromByteArray(messageEvent.data)
+                Log.i(TAG, "Received BreathingSessionRecord from watch: id=${record.sessionId}, plan=${record.planName}, cycles=${record.completedCycles}/${record.targetCycles}")
+
+                val entity = com.pulso.mobile.data.local.PhoneBreathingSessionEntity.fromDomain(record)
+                database.phoneBreathingSessionDao().insertOrUpdate(entity)
+                val count = database.phoneBreathingSessionDao().getCount()
+
+                _diagnosticsState.value = _diagnosticsState.value.copy(
+                    lastBreathingSession = record,
+                    totalBreathingSessionsStored = count,
+                    lastError = null
+                )
+
+                // Send BreathingAck back to watch
+                val ack = com.pulso.core.breathing.BreathingAck(
+                    sessionId = record.sessionId,
+                    status = "OK"
+                )
+                Tasks.await(
+                    messageClient.sendMessage(
+                        messageEvent.sourceNodeId,
+                        DataLayerContracts.BREATHING_ACK_PATH,
+                        ack.toByteArray()
+                    )
+                )
+                Log.i(TAG, "Dispatched BreathingAck to watch for session ${record.sessionId}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to handle BreathingSessionRecord", e)
+            }
         }
     }
 
@@ -487,11 +580,17 @@ class MobileSyncManager private constructor(private val context: Context) :
             val status = WatchStatus.fromByteArray(messageEvent.data)
             Log.d(TAG, "Received WatchStatus: battery=${status.batteryPct}%, model=${status.watchModel}, serviceRunning=${status.serviceRunning}, stressVer=${status.stressConfigVersion}")
             val pending = status.stressConfigVersion != null && status.stressConfigVersion != _diagnosticsState.value.phoneConfigVersion
+            val hapticDesc = when (status.hasAmplitudeControl) {
+                true -> "Control de amplitud analógico (onda suave)"
+                false -> "Modulación por pulsos (sin amplitud analógica)"
+                null -> "Desconocido (sin reporte del reloj)"
+            }
             _diagnosticsState.value = _diagnosticsState.value.copy(
                 lastWatchStatus = status,
                 watchConfigVersion = status.stressConfigVersion ?: _diagnosticsState.value.watchConfigVersion,
                 hasPendingConfig = pending,
-                watchConnected = true
+                watchConnected = true,
+                watchHapticCapability = hapticDesc
             )
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse WatchStatus", e)
@@ -509,6 +608,9 @@ class MobileSyncManager private constructor(private val context: Context) :
         private const val KEY_QUIET_START_M = "quiet_start_m"
         private const val KEY_QUIET_END_H = "quiet_end_h"
         private const val KEY_QUIET_END_M = "quiet_end_m"
+        private const val KEY_BREATHING_PLAN = "breathing_plan"
+        private const val KEY_BREATHING_DURATION = "breathing_duration"
+        private const val KEY_BREATHING_INTENSITY = "breathing_intensity"
 
         @Volatile
         private var INSTANCE: MobileSyncManager? = null
