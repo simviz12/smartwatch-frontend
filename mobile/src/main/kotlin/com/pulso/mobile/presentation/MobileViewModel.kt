@@ -444,13 +444,20 @@ class MobileViewModel(
 
     private fun List<com.pulso.mobile.data.local.PhoneStressEventEntity>.eventsCountOrNull(): Int? = this.size
 
-    fun clearSampleData() {
+    fun wipeAllUserData() {
         viewModelScope.launch {
             windowDao.clearAll()
             stressEventDao.clearAll()
-            _uiState.value = _uiState.value.copy(csvImportFeedback = "Base de datos local limpiada.")
+            breathingSessionDao.clearAll()
+            syncManager.setConsent(false)
+            _uiState.value = _uiState.value.copy(
+                selectedTab = 0,
+                csvImportFeedback = "Todos tus datos locales han sido borrados de forma segura."
+            )
         }
     }
+
+    fun clearSampleData() = wipeAllUserData()
 
     // --- Baseline & Consent Actions ---
 
