@@ -1,0 +1,258 @@
+package com.pulso.wear.data.sync
+
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
+import android.os.Build
+import android.util.Log
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.google.android.gms.tasks.Tasks
+import com.google.android.gms.wearable.DataClient
+import com.google.android.gms.wearable.DataEvent
+import com.google.android.gms.wearable.DataEventBuffer
+import com.google.android.gms.wearable.DataMapItem
+import com.google.android.gms.wearable.MessageClient
+import com.google.android.gms.wearable.MessageEvent
+import com.google.android.gms.wearable.Wearable
+import com.pulso.core.contract.DataLayerContracts
+import com.pulso.core.model.ConfigSync
+import com.pulso.core.model.MeasurementWindow
+import com.pulso.core.model.SamplesAck
+import com.pulso.core.model.SamplesBatch
+import com.pulso.core.model.WatchStatus
+import com.pulso.wear.data.local.PulsoWearDatabase
+import com.pulso.wear.data.sensor.SensorSamplingService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
+
+class SyncManager private constructor(private val context: Context) :
+    DataClient.OnDataChangedListener,
+    MessageClient.OnMessageReceivedListener {
+
+    private val sharedPrefs = context.getSharedPreferences("pulso_sync_prefs", Context.MODE_PRIVATE)
+    private val database = PulsoWearDatabase.getInstance(context)
+    private val dataClient = Wearable.getDataClient(context)
+    private val messageClient = Wearable.getMessageClient(context)
+    private val nodeClient = Wearable.getNodeClient(context)
+    private val workManager = WorkManager.getInstance(context)
+    private val scope = CoroutineScope(Dispatchers.IO)
+
+    private val _currentConfig = MutableStateFlow<ConfigSync?>(loadPersistedConfig())
+    val currentConfig: StateFlow<ConfigSync?> = _currentConfig.asStateFlow()
+
+    init {
+        dataClient.addListener(this)
+        messageClient.addListener(this)
+        schedulePeriodicSync()
+    }
+
+    private fun loadPersistedConfig(): ConfigSync? {
+        val enabled = sharedPrefs.getBoolean(KEY_COLLECTION_ENABLED, false)
+        val hasConfig = sharedPrefs.getBoolean(KEY_HAS_CONFIG, false)
+        if (!hasConfig) return null
+
+        val version = sharedPrefs.getString(KEY_CONSENT_VERSION, null)
+        val interval = sharedPrefs.getInt(KEY_WINDOW_MINUTES, 5)
+        val updated = sharedPrefs.getLong(KEY_UPDATED_AT, 0L)
+        return ConfigSync(
+            collectionEnabled = enabled,
+            consentVersion = version,
+            windowMinutes = interval,
+            updatedAt = updated
+        )
+    }
+
+    private fun persistConfig(config: ConfigSync) {
+        sharedPrefs.edit()
+            .putBoolean(KEY_HAS_CONFIG, true)
+            .putBoolean(KEY_COLLECTION_ENABLED, config.collectionEnabled)
+            .putString(KEY_CONSENT_VERSION, config.consentVersion)
+            .putInt(KEY_WINDOW_MINUTES, config.windowMinutes)
+            .putLong(KEY_UPDATED_AT, config.updatedAt)
+            .apply()
+        _currentConfig.value = config
+
+        if (config.collectionEnabled) {
+            Log.i(TAG, "Consent gate: collectionEnabled=true. Starting SensorSamplingService.")
+            SensorSamplingService.start(context)
+        } else {
+            Log.i(TAG, "Consent gate: collectionEnabled=false. Halting SensorSamplingService.")
+            SensorSamplingService.stop(context)
+        }
+    }
+
+    fun isCollectionEnabled(): Boolean = _currentConfig.value?.collectionEnabled == true
+
+    fun getWindowMinutes(): Int = _currentConfig.value?.windowMinutes ?: 5
+
+    override fun onDataChanged(dataEvents: DataEventBuffer) {
+        for (event in dataEvents) {
+            if (event.type == DataEvent.TYPE_CHANGED && event.dataItem.uri.path == DataLayerContracts.CONFIG_PATH) {
+                val dataMapItem = DataMapItem.fromDataItem(event.dataItem)
+                val payloadBytes = dataMapItem.dataMap.getByteArray(DataLayerContracts.CONFIG_KEY)
+                if (payloadBytes != null) {
+                    try {
+                        val config = ConfigSync.fromByteArray(payloadBytes)
+                        Log.i(TAG, "Received updated ConfigSync from DataClient: enabled=${config.collectionEnabled}, version=${config.consentVersion}")
+                        persistConfig(config)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error deserializing ConfigSync item", e)
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onMessageReceived(messageEvent: MessageEvent) {
+        if (messageEvent.path == DataLayerContracts.SAMPLES_ACK_PATH) {
+            try {
+                val ack = SamplesAck.fromByteArray(messageEvent.data)
+                Log.i(TAG, "Received SamplesAck from phone: batchId=${ack.batchId}, accepted=${ack.accepted}")
+                scope.launch {
+                    val deleted = database.windowDao().deleteWindowsByBatchId(ack.batchId)
+                    Log.i(TAG, "Deleted $deleted synced windows from watch local Room buffer for batch ${ack.batchId}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to parse SamplesAck message", e)
+            }
+        }
+    }
+
+    fun schedulePeriodicSync() {
+        val syncRequest = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .build()
+
+        workManager.enqueueUniquePeriodicWork(
+            SYNC_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            syncRequest
+        )
+    }
+
+    suspend fun syncUnsyncedWindowsNow(): Int = withContext(Dispatchers.IO) {
+        // Enforce 7-day retention cap
+        val sevenDaysAgo = System.currentTimeMillis() - (7L * 24 * 60 * 60 * 1000)
+        val purgedCount = database.windowDao().deleteExpiredWindows(sevenDaysAgo)
+        if (purgedCount > 0) {
+            Log.w(TAG, "Purged $purgedCount expired measurement windows older than 7 days from watch buffer")
+        }
+
+        val unsynced = database.windowDao().getUnsyncedWindows(100)
+        if (unsynced.isEmpty()) {
+            sendStatusUpdate(serviceRunning = isCollectionEnabled())
+            return@withContext 0
+        }
+
+        val connectedNodes = try {
+            Tasks.await(nodeClient.connectedNodes)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error querying connected nodes for sync", e)
+            emptyList()
+        }
+
+        val phoneNode = connectedNodes.firstOrNull()
+        if (phoneNode == null) {
+            Log.w(TAG, "No connected phone node available for sync. Will retry next cycle.")
+            return@withContext 0
+        }
+
+        val domainWindows = unsynced.map { it.toDomain() }
+        val batches = SamplesBatch.createBatches(
+            watchId = Build.SERIAL.ifBlank { Build.MODEL },
+            windows = domainWindows
+        )
+
+        var totalSent = 0
+        for (batch in batches) {
+            val batchWindowIds = batch.windows.map { it.id }
+            database.windowDao().markWindowsWithBatchId(batchWindowIds, batch.batchId)
+
+            val payload = batch.toByteArray()
+            try {
+                Tasks.await(
+                    messageClient.sendMessage(
+                        phoneNode.id,
+                        DataLayerContracts.SAMPLES_PATH,
+                        payload
+                    )
+                )
+                totalSent += batch.windows.size
+                Log.i(TAG, "Dispatched batch ${batch.batchId} with ${batch.windows.size} windows to ${phoneNode.displayName}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to send batch ${batch.batchId} to phone", e)
+            }
+        }
+
+        sendStatusUpdate(serviceRunning = isCollectionEnabled())
+        totalSent
+    }
+
+    fun sendStatusUpdate(serviceRunning: Boolean, lastWindowAt: Long? = null) {
+        scope.launch {
+            try {
+                val nodes = Tasks.await(nodeClient.connectedNodes)
+                val phoneNode = nodes.firstOrNull() ?: return@launch
+
+                val batteryStatus: Intent? = IntentFilter(Intent.ACTION_BATTERY_CHANGED).let { filter ->
+                    context.registerReceiver(null, filter)
+                }
+                val level = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+                val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+                val batteryPct = if (level >= 0 && scale > 0) (level * 100 / scale) else 100
+
+                val status = WatchStatus(
+                    batteryPct = batteryPct,
+                    serviceRunning = serviceRunning,
+                    lastWindowAt = lastWindowAt,
+                    watchModel = "${Build.MANUFACTURER} ${Build.MODEL}",
+                    permissions = mapOf("BODY_SENSORS" to true),
+                    sentAt = System.currentTimeMillis()
+                )
+
+                Tasks.await(
+                    messageClient.sendMessage(
+                        phoneNode.id,
+                        DataLayerContracts.STATUS_PATH,
+                        status.toByteArray()
+                    )
+                )
+                Log.d(TAG, "Sent WatchStatus to ${phoneNode.displayName}: battery=$batteryPct%, service=$serviceRunning")
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to send status update: ${e.message}")
+            }
+        }
+    }
+
+    companion object {
+        private const val TAG = "PulsoSyncManager"
+        private const val SYNC_WORK_NAME = "pulso_periodic_sync_work"
+        private const val KEY_HAS_CONFIG = "has_config"
+        private const val KEY_COLLECTION_ENABLED = "collection_enabled"
+        private const val KEY_CONSENT_VERSION = "consent_version"
+        private const val KEY_WINDOW_MINUTES = "window_minutes"
+        private const val KEY_UPDATED_AT = "updated_at"
+
+        @Volatile
+        private var INSTANCE: SyncManager? = null
+
+        fun getInstance(context: Context): SyncManager {
+            return INSTANCE ?: synchronized(this) {
+                val instance = SyncManager(context.applicationContext)
+                INSTANCE = instance
+                instance
+            }
+        }
+    }
+}

@@ -4,6 +4,21 @@ object DataLayerContracts {
     const val PING_PATH = "/pulso/v1/ping"
     const val PING_SCHEMA_VERSION = 1
 
+    const val CONFIG_PATH = "/pulso/v1/config"
+    const val CONFIG_KEY = "config_payload"
+    const val CONFIG_SCHEMA_VERSION = 1
+
+    const val SAMPLES_PATH = "/pulso/v1/samples"
+    const val SAMPLES_SCHEMA_VERSION = 1
+    const val MAX_SAMPLES_PER_BATCH = 100
+    const val MAX_BATCH_PAYLOAD_BYTES = 90 * 1024 // 90 KB
+
+    const val SAMPLES_ACK_PATH = "/pulso/v1/samples-ack"
+    const val SAMPLES_ACK_SCHEMA_VERSION = 1
+
+    const val STATUS_PATH = "/pulso/v1/status"
+    const val STATUS_SCHEMA_VERSION = 1
+
     object Source {
         const val WATCH = "watch"
         const val PHONE = "phone"

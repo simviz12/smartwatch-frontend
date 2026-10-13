@@ -1,10 +1,17 @@
 package com.pulso.wear.data.local
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.pulso.core.model.MeasurementWindow
 
-@Entity(tableName = "measurement_windows")
+@Entity(
+    tableName = "measurement_windows",
+    indices = [
+        Index(value = ["windowStart"], unique = true),
+        Index(value = ["synced"])
+    ]
+)
 data class WindowEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
@@ -19,7 +26,9 @@ data class WindowEntity(
     val activityState: String,
     val steps: Long?,
     val onBody: Boolean,
-    val source: String
+    val source: String,
+    val synced: Boolean = false,
+    val batchId: String? = null
 ) {
     fun toDomain(): MeasurementWindow = MeasurementWindow(
         id = id,
@@ -38,7 +47,7 @@ data class WindowEntity(
     )
 
     companion object {
-        fun fromDomain(domain: MeasurementWindow): WindowEntity = WindowEntity(
+        fun fromDomain(domain: MeasurementWindow, synced: Boolean = false): WindowEntity = WindowEntity(
             id = domain.id,
             windowStart = domain.windowStart,
             windowEnd = domain.windowEnd,
@@ -51,7 +60,8 @@ data class WindowEntity(
             activityState = domain.activityState,
             steps = domain.steps,
             onBody = domain.onBody,
-            source = domain.source
+            source = domain.source,
+            synced = synced
         )
     }
 }

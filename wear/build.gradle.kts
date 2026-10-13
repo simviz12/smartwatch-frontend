@@ -54,6 +54,11 @@ dependencies {
     // Health Services & Coroutine Guava integration
     implementation(libs.androidx.health.services)
     implementation(libs.androidx.concurrent.futures.ktx)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.9.0")
+    implementation("com.google.guava:guava:33.3.1-android")
+
+    // WorkManager
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
 
     // Room Database
     implementation(libs.androidx.room.runtime)

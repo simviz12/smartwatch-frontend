@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.pulso.core.model.MeasurementWindow
+import com.pulso.core.model.ConfigSync
 import com.pulso.wear.domain.model.ConnectedPhoneNode
 import com.pulso.wear.domain.model.LiveHeartRateState
 import com.pulso.wear.domain.model.PingResult
@@ -12,10 +12,11 @@ import com.pulso.wear.domain.model.SensorCapabilityReport
 import com.pulso.wear.domain.usecase.ExportWindowsCsvUseCase
 import com.pulso.wear.domain.usecase.GetCapabilityReportUseCase
 import com.pulso.wear.domain.usecase.GetConnectedPhoneUseCase
-import com.pulso.wear.domain.usecase.ManageBackgroundSamplingUseCase
+import com.pulso.wear.domain.usecase.ObserveConfigUseCase
 import com.pulso.wear.domain.usecase.ObserveLiveHeartRateUseCase
 import com.pulso.wear.domain.usecase.ObserveWindowsUseCase
 import com.pulso.wear.domain.usecase.SendPingUseCase
+import com.pulso.wear.domain.usecase.TriggerSyncUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,9 +31,10 @@ data class MainUiState(
     val pingCounter: Int = 0,
     val capabilityReport: SensorCapabilityReport? = null,
     val liveHeartRate: LiveHeartRateState = LiveHeartRateState(),
-    val isMonitoringActive: Boolean = false,
+    val config: ConfigSync? = null,
     val exportedCsvPath: String? = null,
     val totalWindowsLogged: Int = 0,
+    val isSyncing: Boolean = false,
     val statusMessage: String? = null
 )
 
@@ -43,7 +45,8 @@ class MainViewModel(
     private val observeLiveHeartRateUseCase: ObserveLiveHeartRateUseCase,
     private val observeWindowsUseCase: ObserveWindowsUseCase,
     private val exportWindowsCsvUseCase: ExportWindowsCsvUseCase,
-    private val manageBackgroundSamplingUseCase: ManageBackgroundSamplingUseCase
+    private val observeConfigUseCase: ObserveConfigUseCase,
+    private val triggerSyncUseCase: TriggerSyncUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
@@ -53,6 +56,18 @@ class MainViewModel(
         checkConnectedNode()
         loadCapabilityReport()
         observeWindows()
+        observeConfig()
+    }
+
+    private fun observeConfig() {
+        viewModelScope.launch {
+            observeConfigUseCase().collect { conf ->
+                _uiState.value = _uiState.value.copy(config = conf)
+                if (conf?.collectionEnabled == true) {
+                    startLiveMeasurement()
+                }
+            }
+        }
     }
 
     fun loadCapabilityReport() {
@@ -63,6 +78,7 @@ class MainViewModel(
     }
 
     fun startLiveMeasurement() {
+        if (_uiState.value.config?.collectionEnabled != true) return
         viewModelScope.launch {
             observeLiveHeartRateUseCase().collect { state ->
                 _uiState.value = _uiState.value.copy(liveHeartRate = state)
@@ -78,20 +94,19 @@ class MainViewModel(
         }
     }
 
-    fun toggleBackgroundSampling() {
+    fun triggerSync() {
         viewModelScope.launch {
-            val nextState = !_uiState.value.isMonitoringActive
-            if (nextState) {
-                manageBackgroundSamplingUseCase.start()
+            _uiState.value = _uiState.value.copy(isSyncing = true)
+            try {
+                val sent = triggerSyncUseCase()
                 _uiState.value = _uiState.value.copy(
-                    isMonitoringActive = true,
-                    statusMessage = "Servicio en primer plano iniciado"
+                    isSyncing = false,
+                    statusMessage = "Sincronizados $sent ventanas con el celular"
                 )
-            } else {
-                manageBackgroundSamplingUseCase.stop()
+            } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    isMonitoringActive = false,
-                    statusMessage = "Servicio detenido"
+                    isSyncing = false,
+                    statusMessage = "Error de sincronización: ${e.message}"
                 )
             }
         }
@@ -168,7 +183,8 @@ class MainViewModel(
             observeLiveHeartRateUseCase: ObserveLiveHeartRateUseCase,
             observeWindowsUseCase: ObserveWindowsUseCase,
             exportWindowsCsvUseCase: ExportWindowsCsvUseCase,
-            manageBackgroundSamplingUseCase: ManageBackgroundSamplingUseCase
+            observeConfigUseCase: ObserveConfigUseCase,
+            triggerSyncUseCase: TriggerSyncUseCase
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -179,7 +195,8 @@ class MainViewModel(
                     observeLiveHeartRateUseCase,
                     observeWindowsUseCase,
                     exportWindowsCsvUseCase,
-                    manageBackgroundSamplingUseCase
+                    observeConfigUseCase,
+                    triggerSyncUseCase
                 ) as T
             }
         }

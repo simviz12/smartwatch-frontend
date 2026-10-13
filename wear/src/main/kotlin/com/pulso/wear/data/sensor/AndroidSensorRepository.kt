@@ -1,11 +1,9 @@
 package com.pulso.wear.data.sensor
 
-import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
-import androidx.concurrent.futures.await
 import androidx.core.content.ContextCompat
 import androidx.health.services.client.HealthServices
 import androidx.health.services.client.MeasureCallback
@@ -14,7 +12,8 @@ import androidx.health.services.client.data.DataPointContainer
 import androidx.health.services.client.data.DataType
 import androidx.health.services.client.data.DataTypeAvailability
 import androidx.health.services.client.data.DeltaDataType
-import androidx.health.services.client.data.SampleDataPoint
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import com.pulso.core.model.MeasurementWindow
 import com.pulso.wear.data.local.PulsoWearDatabase
 import com.pulso.wear.data.local.WindowEntity
@@ -25,6 +24,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.guava.await
 import java.io.File
 
 class AndroidSensorRepository(
@@ -39,16 +39,16 @@ class AndroidSensorRepository(
 
     override suspend fun getCapabilityReport(): SensorCapabilityReport {
         val permissions = mapOf(
-            Manifest.permission.BODY_SENSORS to (ContextCompat.checkSelfPermission(context, Manifest.permission.BODY_SENSORS) == PackageManager.PERMISSION_GRANTED),
-            Manifest.permission.BODY_SENSORS_BACKGROUND to (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                ContextCompat.checkSelfPermission(context, Manifest.permission.BODY_SENSORS_BACKGROUND) == PackageManager.PERMISSION_GRANTED
+            android.Manifest.permission.BODY_SENSORS to (ContextCompat.checkSelfPermission(context, android.Manifest.permission.BODY_SENSORS) == PackageManager.PERMISSION_GRANTED),
+            android.Manifest.permission.BODY_SENSORS_BACKGROUND to (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(context, android.Manifest.permission.BODY_SENSORS_BACKGROUND) == PackageManager.PERMISSION_GRANTED
             } else true),
-            Manifest.permission.ACTIVITY_RECOGNITION to (ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED)
+            android.Manifest.permission.ACTIVITY_RECOGNITION to (ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED)
         )
 
         val supportedTypes = mutableListOf<String>()
         try {
-            val capabilities = passiveMonitoringClient.getCapabilitiesAsync().await()
+            val capabilities = passiveMonitoringClient.capabilities.await()
             val supportedPassiveTypes = capabilities.supportedDataTypesPassiveMonitoring
             for (type in supportedPassiveTypes) {
                 supportedTypes.add(type.name)
@@ -117,7 +117,7 @@ class AndroidSensorRepository(
 
         awaitClose {
             Log.d(TAG, "Unregistering MeasureClient callback for HEART_RATE_BPM")
-            measureClient.unregisterMeasureCallbackAsync(DataType.HEART_RATE_BPM, callback)
+            Futures.getUnchecked(measureClient.unregisterMeasureCallbackAsync(DataType.HEART_RATE_BPM, callback))
         }
     }
 

@@ -11,19 +11,20 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -34,8 +35,6 @@ import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.ButtonDefaults
-import androidx.wear.compose.material.Card
-import androidx.wear.compose.material.CardDefaults
 import androidx.wear.compose.material.CircularProgressIndicator
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.PositionIndicator
@@ -44,13 +43,15 @@ import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
 import com.pulso.wear.data.repository.AndroidWearDataLayerRepository
 import com.pulso.wear.data.sensor.AndroidSensorRepository
+import com.pulso.wear.data.sync.AndroidSyncRepository
 import com.pulso.wear.domain.usecase.ExportWindowsCsvUseCase
 import com.pulso.wear.domain.usecase.GetCapabilityReportUseCase
 import com.pulso.wear.domain.usecase.GetConnectedPhoneUseCase
-import com.pulso.wear.domain.usecase.ManageBackgroundSamplingUseCase
+import com.pulso.wear.domain.usecase.ObserveConfigUseCase
 import com.pulso.wear.domain.usecase.ObserveLiveHeartRateUseCase
 import com.pulso.wear.domain.usecase.ObserveWindowsUseCase
 import com.pulso.wear.domain.usecase.SendPingUseCase
+import com.pulso.wear.domain.usecase.TriggerSyncUseCase
 import com.pulso.wear.presentation.theme.PulsoWearTheme
 
 class MainActivity : ComponentActivity() {
@@ -70,6 +71,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels {
         val wearRepo = AndroidWearDataLayerRepository(this)
         val sensorRepo = AndroidSensorRepository(this)
+        val syncRepo = AndroidSyncRepository(this)
         MainViewModel.provideFactory(
             getConnectedPhoneUseCase = GetConnectedPhoneUseCase(wearRepo),
             sendPingUseCase = SendPingUseCase(wearRepo),
@@ -77,7 +79,8 @@ class MainActivity : ComponentActivity() {
             observeLiveHeartRateUseCase = ObserveLiveHeartRateUseCase(sensorRepo),
             observeWindowsUseCase = ObserveWindowsUseCase(sensorRepo),
             exportWindowsCsvUseCase = ExportWindowsCsvUseCase(sensorRepo),
-            manageBackgroundSamplingUseCase = ManageBackgroundSamplingUseCase(sensorRepo)
+            observeConfigUseCase = ObserveConfigUseCase(syncRepo),
+            triggerSyncUseCase = TriggerSyncUseCase(syncRepo)
         )
     }
 
@@ -90,7 +93,6 @@ class MainActivity : ComponentActivity() {
             PulsoWearTheme {
                 MainScreen(
                     viewModel = viewModel,
-                    onRequestPermissions = { checkAndRequestPermissions() },
                     onCopyReport = {
                         val path = viewModel.saveReportToFile(this)
                         Log.i("PulsoReport", "Capability report saved: $path")
@@ -118,8 +120,6 @@ class MainActivity : ComponentActivity() {
 
         if (permissionsToRequest.isNotEmpty()) {
             permissionLauncher.launch(permissionsToRequest.toTypedArray())
-        } else {
-            viewModel.startLiveMeasurement()
         }
     }
 
@@ -132,7 +132,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(
     viewModel: MainViewModel,
-    onRequestPermissions: () -> Unit,
     onCopyReport: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -163,130 +162,97 @@ fun MainScreen(
                         color = MaterialTheme.colors.primary,
                         letterSpacing = 2.sp
                     )
-                    Text(
-                        text = "MODO DEPURACIÓN / SENSORES",
-                        fontSize = 9.sp,
-                        color = Color(0xFFFFB74D),
-                        fontWeight = FontWeight.SemiBold
-                    )
                 }
             }
 
-            // Live HR Card
-            item {
-                Card(
-                    onClick = {},
-                    enabled = false,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    colors = CardDefaults.cardColors(backgroundColor = Color(0xFF1A1A1A))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+            // Consent Gate Display
+            val isConsentGranted = uiState.config?.collectionEnabled == true
+            if (!isConsentGranted) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF263238))
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "FRECUENCIA CARDÍACA EN VIVO",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFB0BEC5)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        val bpmText = uiState.liveHeartRate.bpm?.let { "${it.toInt()} BPM" } ?: "-- BPM"
-                        Text(
-                            text = bpmText,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (uiState.liveHeartRate.bpm != null) Color(0xFF00E676) else Color.White
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "Estado: ${uiState.liveHeartRate.availability}",
-                            fontSize = 10.sp,
-                            color = Color(0xFF90A4AE)
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Consentimiento requerido",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFFB74D),
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Abre Pulso en tu celular para empezar",
+                                fontSize = 11.sp,
+                                color = Color.White,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
-            }
-
-            // HRV Availability Card
-            item {
-                Card(
-                    onClick = {},
-                    enabled = false,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    colors = CardDefaults.cardColors(backgroundColor = Color(0xFF1E2124))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+            } else {
+                // Live HR Box (Only when consent is granted)
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF1A1A1A))
+                            .padding(10.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "VARIABILIDAD (HRV / IBI)",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFB0BEC5)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        val report = uiState.capabilityReport
-                        if (report?.samsungSdkAvailable == true) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "Samsung Sensor SDK Activo",
-                                fontSize = 11.sp,
-                                color = Color(0xFF81C784),
-                                fontWeight = FontWeight.SemiBold
+                                text = "FRECUENCIA CARDÍACA",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFB0BEC5)
                             )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val bpmText = uiState.liveHeartRate.bpm?.let { "${it.toInt()} BPM" } ?: "-- BPM"
+                            Text(
+                                text = bpmText,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (uiState.liveHeartRate.bpm != null) Color(0xFF00E676) else Color.White
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Estado: ${uiState.liveHeartRate.availability}",
+                                fontSize = 10.sp,
+                                color = Color(0xFF90A4AE)
+                            )
+                        }
+                    }
+                }
+
+                // Sync action button
+                item {
+                    Button(
+                        onClick = { viewModel.triggerSync() },
+                        enabled = !uiState.isSyncing,
+                        modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
+                        colors = ButtonDefaults.primaryButtonColors()
+                    ) {
+                        if (uiState.isSyncing) {
+                            CircularProgressIndicator(strokeWidth = 2.dp)
                         } else {
                             Text(
-                                text = "HRV no disponible en este reloj",
-                                fontSize = 11.sp,
-                                color = Color(0xFFFF8A80),
-                                textAlign = TextAlign.Center
-                            )
-                            Text(
-                                text = "Requiere Samsung Health Sensor SDK con Developer Mode activo",
-                                fontSize = 9.sp,
-                                color = Color(0xFF78909C),
-                                textAlign = TextAlign.Center
+                                text = "Sincronizar (${uiState.totalWindowsLogged})",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
                 }
             }
 
-            // Background Service Toggle Button
-            item {
-                val serviceActive = uiState.isMonitoringActive
-                Button(
-                    onClick = { viewModel.toggleBackgroundSampling() },
-                    modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        backgroundColor = if (serviceActive) Color(0xFFD32F2F) else MaterialTheme.colors.primary
-                    )
-                ) {
-                    Text(
-                        text = if (serviceActive) "Detener Servicio" else "Iniciar Muestreo (5m)",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-
-            // Export CSV Button
-            item {
-                Button(
-                    onClick = { viewModel.exportCsv() },
-                    modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
-                    colors = ButtonDefaults.secondaryButtonColors()
-                ) {
-                    Text(
-                        text = "Exportar CSV (${uiState.totalWindowsLogged})",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-
-            // Copy Capability Report Button
+            // Diagnostics and Export Tools
             item {
                 Button(
                     onClick = onCopyReport,
@@ -301,13 +267,27 @@ fun MainScreen(
                 }
             }
 
+            item {
+                Button(
+                    onClick = { viewModel.exportCsv() },
+                    modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
+                    colors = ButtonDefaults.secondaryButtonColors()
+                ) {
+                    Text(
+                        text = "Exportar CSV (Debug)",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
             // Send Ping to Companion Button
             item {
                 Button(
                     onClick = { viewModel.sendPing() },
                     enabled = !uiState.isSendingPing,
                     modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
-                    colors = ButtonDefaults.primaryButtonColors()
+                    colors = ButtonDefaults.secondaryButtonColors()
                 ) {
                     if (uiState.isSendingPing) {
                         CircularProgressIndicator(strokeWidth = 2.dp)
@@ -321,7 +301,7 @@ fun MainScreen(
                 }
             }
 
-            // Status feedback message
+            // Status message
             item {
                 uiState.statusMessage?.let { msg ->
                     Text(

@@ -1,21 +1,25 @@
 package com.pulso.wear.presentation
 
+import com.pulso.core.model.ConfigSync
 import com.pulso.core.model.MeasurementWindow
 import com.pulso.wear.domain.model.ConnectedPhoneNode
 import com.pulso.wear.domain.model.LiveHeartRateState
 import com.pulso.wear.domain.model.PingResult
 import com.pulso.wear.domain.model.SensorCapabilityReport
 import com.pulso.wear.domain.repository.SensorRepository
+import com.pulso.wear.domain.repository.SyncRepository
 import com.pulso.wear.domain.repository.WearDataLayerRepository
 import com.pulso.wear.domain.usecase.ExportWindowsCsvUseCase
 import com.pulso.wear.domain.usecase.GetCapabilityReportUseCase
 import com.pulso.wear.domain.usecase.GetConnectedPhoneUseCase
-import com.pulso.wear.domain.usecase.ManageBackgroundSamplingUseCase
+import com.pulso.wear.domain.usecase.ObserveConfigUseCase
 import com.pulso.wear.domain.usecase.ObserveLiveHeartRateUseCase
 import com.pulso.wear.domain.usecase.ObserveWindowsUseCase
 import com.pulso.wear.domain.usecase.SendPingUseCase
+import com.pulso.wear.domain.usecase.TriggerSyncUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -24,6 +28,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -34,6 +39,8 @@ import java.io.File
 class MainViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
+
+    private val fakeConfigFlow = MutableStateFlow<ConfigSync?>(null)
 
     private val fakeWearRepo = object : WearDataLayerRepository {
         override suspend fun getConnectedPhoneNode() = ConnectedPhoneNode("phone_1", "Pixel 8 Pro")
@@ -82,6 +89,11 @@ class MainViewModelTest {
         override suspend fun stopBackgroundMeasurementService() {}
     }
 
+    private val fakeSyncRepo = object : SyncRepository {
+        override val currentConfig = fakeConfigFlow
+        override suspend fun triggerSyncNow(): Int = 5
+    }
+
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
@@ -100,45 +112,47 @@ class MainViewModelTest {
             observeLiveHeartRateUseCase = ObserveLiveHeartRateUseCase(fakeSensorRepo),
             observeWindowsUseCase = ObserveWindowsUseCase(fakeSensorRepo),
             exportWindowsCsvUseCase = ExportWindowsCsvUseCase(fakeSensorRepo),
-            manageBackgroundSamplingUseCase = ManageBackgroundSamplingUseCase(fakeSensorRepo)
+            observeConfigUseCase = ObserveConfigUseCase(fakeSyncRepo),
+            triggerSyncUseCase = TriggerSyncUseCase(fakeSyncRepo)
         )
     }
 
     @Test
-    fun `init loads capability report and window count`() = runTest {
+    fun `init without config maintains null config in state`() = runTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertNotNull(state.capabilityReport)
-        assertEquals("Pixel Watch 3", state.capabilityReport?.deviceModel)
-        assertEquals(1, state.totalWindowsLogged)
+        assertEquals(null, state.config)
+        assertFalse(state.config?.collectionEnabled == true)
     }
 
     @Test
-    fun `exportCsv updates state with file path`() = runTest {
+    fun `config update enables collection in state`() = runTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.exportCsv()
+        fakeConfigFlow.value = ConfigSync(
+            collectionEnabled = true,
+            consentVersion = "1.0",
+            windowMinutes = 5,
+            updatedAt = 1000L
+        )
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.config?.collectionEnabled == true)
+    }
+
+    @Test
+    fun `triggerSync updates state with dispatched count`() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.triggerSync()
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertNotNull(state.exportedCsvPath)
-        assertTrue(state.statusMessage?.contains("CSV exportado") == true)
-    }
-
-    @Test
-    fun `toggleBackgroundSampling alternates monitoring status`() = runTest {
-        val viewModel = createViewModel()
-        advanceUntilIdle()
-
-        viewModel.toggleBackgroundSampling()
-        advanceUntilIdle()
-        assertTrue(viewModel.uiState.value.isMonitoringActive)
-
-        viewModel.toggleBackgroundSampling()
-        advanceUntilIdle()
-        assertTrue(!viewModel.uiState.value.isMonitoringActive)
+        assertFalse(state.isSyncing)
+        assertTrue(state.statusMessage?.contains("Sincronizados 5 ventanas") == true)
     }
 }

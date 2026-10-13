@@ -20,9 +20,11 @@ import androidx.health.services.client.data.DataPointContainer
 import androidx.health.services.client.data.DataType
 import androidx.health.services.client.data.DataTypeAvailability
 import androidx.health.services.client.data.DeltaDataType
+import com.google.common.util.concurrent.Futures
 import com.pulso.core.model.MeasurementWindow
 import com.pulso.wear.data.local.PulsoWearDatabase
 import com.pulso.wear.data.local.WindowEntity
+import com.pulso.wear.data.sync.SyncManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -43,6 +45,7 @@ class SensorSamplingService : Service() {
     private val healthServicesClient by lazy { HealthServices.getClient(this) }
     private val measureClient by lazy { healthServicesClient.measureClient }
     private val database by lazy { PulsoWearDatabase.getInstance(this) }
+    private val syncManager by lazy { SyncManager.getInstance(this) }
 
     private val measureCallback = object : MeasureCallback {
         override fun onAvailabilityChanged(dataType: DeltaDataType<*, *>, availability: Availability) {
@@ -60,6 +63,12 @@ class SensorSamplingService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        if (!syncManager.isCollectionEnabled()) {
+            Log.w(TAG, "Consent gate blocked: collectionEnabled is false. Stopping service immediately.")
+            stopSelf()
+            return
+        }
+
         createNotificationChannel()
         acquireWakeLock()
         startAsForeground()
@@ -86,12 +95,17 @@ class SensorSamplingService : Service() {
 
     private fun startSamplingLoop() {
         serviceScope.launch {
-            Log.i(TAG, "Starting periodic sensor sampling loop (every 5 minutes, 60s active sample)")
+            Log.i(TAG, "Starting periodic sensor sampling loop with consent gate active")
             while (isActive) {
+                if (!syncManager.isCollectionEnabled()) {
+                    Log.i(TAG, "Consent revoked dynamically. Halting sampling service.")
+                    stopSelf()
+                    break
+                }
+
                 val windowStart = System.currentTimeMillis()
                 windowSamples.clear()
 
-                // Register measure callback for 60 seconds
                 try {
                     isMeasuring = true
                     measureClient.registerMeasureCallback(DataType.HEART_RATE_BPM, measureCallback)
@@ -101,7 +115,7 @@ class SensorSamplingService : Service() {
                     Log.e(TAG, "Error during active measure window", e)
                 } finally {
                     try {
-                        measureClient.unregisterMeasureCallbackAsync(DataType.HEART_RATE_BPM, measureCallback)
+                        Futures.getUnchecked(measureClient.unregisterMeasureCallbackAsync(DataType.HEART_RATE_BPM, measureCallback))
                     } catch (e: Exception) {
                         Log.w(TAG, "Error unregistering measure callback", e)
                     }
@@ -109,7 +123,7 @@ class SensorSamplingService : Service() {
                 }
 
                 val windowEnd = System.currentTimeMillis()
-                if (windowSamples.isNotEmpty()) {
+                if (windowSamples.isNotEmpty() && currentOnBody) {
                     val meanHr = windowSamples.average()
                     val minHr = windowSamples.minOrNull() ?: meanHr
                     val maxHr = windowSamples.maxOrNull() ?: meanHr
@@ -120,23 +134,27 @@ class SensorSamplingService : Service() {
                         meanHr = meanHr,
                         minHr = minHr,
                         maxHr = maxHr,
-                        rmssd = null, // Path B (Health Services standard BPM)
+                        rmssd = null,
                         validIbiCount = 0,
                         ibiValidRatio = 0.0,
                         activityState = "PASSIVE",
                         steps = null,
-                        onBody = currentOnBody,
+                        onBody = true,
                         source = "HEALTH_SERVICES_PASSIVE_WINDOW"
                     )
 
-                    database.windowDao().insertWindow(WindowEntity.fromDomain(window))
+                    database.windowDao().insertWindow(WindowEntity.fromDomain(window, synced = false))
                     Log.i(TAG, "Saved window: meanHr=$meanHr, minHr=$minHr, maxHr=$maxHr, samples=${windowSamples.size}")
+
+                    // Send status update
+                    syncManager.sendStatusUpdate(serviceRunning = true, lastWindowAt = windowEnd)
                 } else {
-                    Log.w(TAG, "Window completed with 0 samples (watch off-body or acquiring)")
+                    Log.w(TAG, "Window completed without valid on-body samples (watch off-body or acquiring)")
                 }
 
-                // Wait 4 minutes until next window (5 minutes total cycle)
-                delay(4 * 60_000L)
+                val windowIntervalMinutes = syncManager.getWindowMinutes()
+                val waitMs = (windowIntervalMinutes * 60_000L) - 60_000L
+                delay(if (waitMs > 0) waitMs else 60_000L)
             }
         }
     }
@@ -167,13 +185,14 @@ class SensorSamplingService : Service() {
     override fun onDestroy() {
         serviceScope.cancel()
         try {
-            measureClient.unregisterMeasureCallbackAsync(DataType.HEART_RATE_BPM, measureCallback)
+            Futures.getUnchecked(measureClient.unregisterMeasureCallbackAsync(DataType.HEART_RATE_BPM, measureCallback))
         } catch (e: Exception) {
             // ignore
         }
         wakeLock?.let {
             if (it.isHeld) it.release()
         }
+        syncManager.sendStatusUpdate(serviceRunning = false)
         super.onDestroy()
         Log.i(TAG, "SensorSamplingService stopped")
     }
