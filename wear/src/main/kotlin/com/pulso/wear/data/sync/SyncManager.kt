@@ -418,6 +418,26 @@ class SyncManager private constructor(private val context: Context) :
         }
     }
 
+    suspend fun openRemotePhoneChat(eventId: String?): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val nodes = Tasks.await(nodeClient.connectedNodes)
+            val phoneNode = nodes.firstOrNull() ?: return@withContext false
+            val payload = (eventId ?: "").toByteArray(Charsets.UTF_8)
+            Tasks.await(
+                messageClient.sendMessage(
+                    phoneNode.id,
+                    "/pulso/v1/open-chat",
+                    payload
+                )
+            )
+            Log.d(TAG, "Sent /pulso/v1/open-chat to ${phoneNode.displayName} (eventId=$eventId)")
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to send open-chat message: ${e.message}")
+            false
+        }
+    }
+
     companion object {
         private const val TAG = "PulsoSyncManager"
         private const val SYNC_WORK_NAME = "pulso_periodic_sync_work"

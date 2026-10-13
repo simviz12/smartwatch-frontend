@@ -217,6 +217,22 @@ class MainViewModel(
         }
     }
 
+    fun openChatOnPhone(context: Context, eventId: String? = null) {
+        viewModelScope.launch {
+            try {
+                val syncManager = com.pulso.wear.data.sync.SyncManager.getInstance(context)
+                val success = syncManager.openRemotePhoneChat(eventId)
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = if (success) "Abriendo Pulso en tu celular..." else "Celular no disponible"
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = "Error al comunicar con celular: ${e.message}"
+                )
+            }
+        }
+    }
+
     companion object {
         fun provideFactory(
             getConnectedPhoneUseCase: GetConnectedPhoneUseCase,
