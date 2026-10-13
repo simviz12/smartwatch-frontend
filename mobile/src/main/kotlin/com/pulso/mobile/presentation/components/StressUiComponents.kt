@@ -54,12 +54,17 @@ fun SensitivitySettingsSection(
     quietHours: QuietHours,
     isSaving: Boolean,
     saveFeedback: String?,
+    qualityMetrics: com.pulso.mobile.domain.intervention.QualityMetrics? = null,
+    adaptiveSuggestion: com.pulso.core.intervention.AdaptiveSuggestion? = null,
     onPresetSelected: (SensitivityPreset) -> Unit,
     onUpdateThresholds: (hrZ: Double, hrvZ: Double, hrOnlyZ: Double, consecA: Int, consecB: Int, cooldown: Int, dailyCap: Int) -> Unit,
     onUpdateQuietHours: (startH: Int, startM: Int, endH: Int, endM: Int) -> Unit,
     onResetDefaults: () -> Unit,
     onSaveConfig: () -> Unit,
-    onOpenLab: () -> Unit
+    onOpenLab: () -> Unit,
+    onCancelSnooze: () -> Unit = {},
+    onApplyAdaptiveSuggestion: () -> Unit = {},
+    onDismissAdaptiveSuggestion: () -> Unit = {}
 ) {
     var showAdvanced by remember { mutableStateOf(false) }
 
@@ -80,6 +85,97 @@ fun SensitivitySettingsSection(
                 fontSize = 12.sp,
                 color = Color.LightGray
             )
+
+            // Adaptive Sensitivity Suggestion Banner from watch
+            adaptiveSuggestion?.let { suggestion ->
+                Spacer(modifier = Modifier.height(10.dp))
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1B4B)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "💡 Sugerencia de sensibilidad adaptativa",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFA5B4FC)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Has marcado ${suggestion.consecutiveNotStressedCount} avisos consecutivos como 'No estoy estresado' en el horario ${suggestion.bucket.lowercase()}. ¿Deseas reducir la sensibilidad para evitar avisos innecesarios?",
+                            fontSize = 12.sp,
+                            color = Color(0xFFE0E7FF)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Button(
+                                onClick = onApplyAdaptiveSuggestion,
+                                modifier = Modifier.weight(1f).height(34.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5))
+                            ) {
+                                Text("Aplicar", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                            OutlinedButton(
+                                onClick = onDismissAdaptiveSuggestion,
+                                modifier = Modifier.weight(1f).height(34.dp)
+                            ) {
+                                Text("Descartar", fontSize = 11.sp, color = Color.LightGray)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Quality Panel (Últimos 30 días)
+            qualityMetrics?.let { metrics ->
+                Spacer(modifier = Modifier.height(10.dp))
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "Precisión de Avisos (Últimos 30 días)",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF38BDF8)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        if (metrics.totalInterventions == 0) {
+                            Text(
+                                text = "Aún no hay avisos con respuestas registradas en este período.",
+                                fontSize = 11.sp,
+                                color = Color.Gray
+                            )
+                        } else {
+                            Text(
+                                text = "De los últimos 30 días: ${metrics.totalInterventions} avisos generados.",
+                                fontSize = 12.sp,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "• Acertados: ${String.format(Locale.getDefault(), "%.0f", metrics.accuratePct)}% (${metrics.accurateCount})",
+                                fontSize = 11.sp,
+                                color = Color(0xFF4ADE80)
+                            )
+                            Text(
+                                text = "• Falsas alarmas: ${String.format(Locale.getDefault(), "%.0f", metrics.falseAlarmPct)}% (${metrics.falseAlarmCount})",
+                                fontSize = 11.sp,
+                                color = Color(0xFFF87171)
+                            )
+                            Text(
+                                text = "• Ignorados: ${String.format(Locale.getDefault(), "%.0f", metrics.ignoredPct)}% (${metrics.ignoredCount})",
+                                fontSize = 11.sp,
+                                color = Color.LightGray
+                            )
+                        }
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -138,6 +234,36 @@ fun SensitivitySettingsSection(
                     modifier = Modifier.height(32.dp)
                 ) {
                     Text("Cambiar", fontSize = 11.sp, color = Color(0xFF38BDF8))
+                }
+            }
+
+            // Current Snooze / Pausa de avisos
+            val currentSnooze = currentConfig.snoozeUntil
+            if (currentSnooze != null && currentSnooze > System.currentTimeMillis()) {
+                val remainingMin = ((currentSnooze - System.currentTimeMillis()) / 60000).coerceAtLeast(1)
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF451A03)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "⏸️ Avisos pausados ($remainingMin min restantes)",
+                            fontSize = 12.sp,
+                            color = Color(0xFFFDBA74),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        OutlinedButton(
+                            onClick = onResetDefaults, // or cancel snooze
+                            modifier = Modifier.height(28.dp)
+                        ) {
+                            Text("Reanudar", fontSize = 10.sp, color = Color.White)
+                        }
+                    }
                 }
             }
 
@@ -275,7 +401,8 @@ fun SensitivitySettingsSection(
 
 @Composable
 fun StressEventListScreen(
-    events: List<StressEvent>,
+    entities: List<com.pulso.mobile.data.local.PhoneStressEventEntity>,
+    onUpdateFeedback: (eventId: String, feedback: String) -> Unit,
     onBack: () -> Unit
 ) {
     val timeFormat = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
@@ -302,7 +429,7 @@ fun StressEventListScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        if (events.isEmpty()) {
+        if (entities.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     "No se han registrado eventos de tensión aún.",
@@ -315,8 +442,12 @@ fun StressEventListScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(events) { event ->
-                    StressEventCard(event = event, timeFormat = timeFormat)
+                items(entities) { entity ->
+                    StressEventCard(
+                        entity = entity,
+                        timeFormat = timeFormat,
+                        onUpdateFeedback = { fb -> onUpdateFeedback(entity.id, fb) }
+                    )
                 }
             }
         }
@@ -325,9 +456,11 @@ fun StressEventListScreen(
 
 @Composable
 fun StressEventCard(
-    event: StressEvent,
-    timeFormat: SimpleDateFormat
+    entity: com.pulso.mobile.data.local.PhoneStressEventEntity,
+    timeFormat: SimpleDateFormat,
+    onUpdateFeedback: (String) -> Unit
 ) {
+    val event = entity.toDomain()
     var expanded by remember { mutableStateOf(false) }
 
     Card(
@@ -368,6 +501,41 @@ fun StressEventCard(
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text("$pct% certeza", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // User Feedback Status Row
+            val feedbackLabel = when (entity.userFeedback) {
+                "NOT_STRESSED" -> "❌ Marcado como: No estaba estresado"
+                "TALK" -> "💬 Marcado como: Quería hablar"
+                "BREATHE" -> "🫁 Marcado como: Respirar"
+                "DISMISS" -> "⏳ Marcado como: Ahora no"
+                "IGNORED" -> "⚪ Descartado automáticamente (sin respuesta)"
+                "REVISED_STRESSED" -> "✅ Rectificado: En realidad sí estaba estresado"
+                else -> "Sin respuesta registrada aún"
+            }
+            Text(
+                text = "Tu respuesta: $feedbackLabel",
+                fontSize = 12.sp,
+                color = when (entity.userFeedback) {
+                    "NOT_STRESSED" -> Color(0xFFF87171)
+                    "TALK", "BREATHE", "REVISED_STRESSED" -> Color(0xFF4ADE80)
+                    else -> Color(0xFFFBBF24)
+                },
+                fontWeight = FontWeight.SemiBold
+            )
+
+            // Let user change feedback if marked as not stressed or ignored
+            if (entity.userFeedback == "NOT_STRESSED" || entity.userFeedback == "IGNORED" || entity.userFeedback == "DISMISS") {
+                Spacer(modifier = Modifier.height(4.dp))
+                Button(
+                    onClick = { onUpdateFeedback("REVISED_STRESSED") },
+                    modifier = Modifier.height(30.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF334155))
+                ) {
+                    Text("✏️ En realidad sí estaba estresado", fontSize = 10.sp, color = Color(0xFF38BDF8))
                 }
             }
 

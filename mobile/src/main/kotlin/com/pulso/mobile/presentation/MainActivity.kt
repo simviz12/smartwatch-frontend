@@ -67,6 +67,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (intent?.getStringExtra("route") == "chat_placeholder") {
+            viewModel.selectTab(6)
+        }
         setContent {
             MaterialTheme {
                 MainPhoneScreen(viewModel = viewModel)
@@ -170,6 +173,7 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                     )
                 }
                 uiState.selectedTab == 2 -> {
+                    val qualityMetrics by viewModel.qualityMetrics.collectAsState()
                     AjustesScreen(
                         diagnostics = diagnostics,
                         currentConfig = uiState.stressConfig,
@@ -177,6 +181,7 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                         quietHours = uiState.quietHours,
                         isSavingConfig = uiState.isSavingConfig,
                         configSaveFeedback = uiState.configSaveFeedback,
+                        qualityMetrics = qualityMetrics,
                         onPresetSelected = { viewModel.onPresetSelected(it) },
                         onUpdateThresholds = { hrZ, hrvZ, hrOnlyZ, a, b, cd, cap ->
                             viewModel.onUpdateThresholds(hrZ, hrvZ, hrOnlyZ, a, b, cd, cap)
@@ -186,6 +191,9 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                         onSaveConfig = { viewModel.saveConfig() },
                         onOpenLab = { viewModel.selectTab(5) },
                         onNavigateToBaseline = { viewModel.selectTab(3) },
+                        onCancelSnooze = { viewModel.cancelSnooze() },
+                        onApplyAdaptiveSuggestion = { viewModel.applyAdaptiveSuggestion() },
+                        onDismissAdaptiveSuggestion = { viewModel.dismissAdaptiveSuggestion() },
                         onRevokeConsent = { viewModel.revokeConsent() }
                     )
                 }
@@ -197,9 +205,10 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                     )
                 }
                 uiState.selectedTab == 4 -> {
-                    val stressEvents by viewModel.stressEvents.collectAsState()
+                    val stressEventEntities by viewModel.stressEventEntities.collectAsState()
                     com.pulso.mobile.presentation.components.StressEventListScreen(
-                        events = stressEvents,
+                        entities = stressEventEntities,
+                        onUpdateFeedback = { eventId, feedback -> viewModel.updateEventFeedback(eventId, feedback) },
                         onBack = { viewModel.selectTab(0) }
                     )
                 }
@@ -217,6 +226,11 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                             viewModel.selectTab(2)
                         },
                         onBack = { viewModel.selectTab(2) }
+                    )
+                }
+                uiState.selectedTab == 6 -> {
+                    ChatPlaceholderScreen(
+                        onBack = { viewModel.selectTab(0) }
                     )
                 }
             }
@@ -555,6 +569,14 @@ fun DiagnosticoScreen(
                     val timeStr = Date(ev.time).toString()
                     Text("• Último evento: $timeStr (Confianza: ${(ev.confidence * 100).toInt()}%)", color = Color(0xFFFBBF24), fontSize = 12.sp)
                 } ?: Text("• Último evento: Ninguno registrado aún", color = Color.LightGray, fontSize = 12.sp)
+                diagnostics.lastFeedbackReceived?.let { fb ->
+                    val timeStr = Date(fb.timestamp).toString()
+                    Text("• Última retroalimentación: ${fb.action.name} en ${fb.timeBucket} ($timeStr)", color = Color(0xFF38BDF8), fontSize = 12.sp)
+                } ?: Text("• Última retroalimentación: Ninguna registrada aún", color = Color.LightGray, fontSize = 12.sp)
+                diagnostics.activeSnoozeUntil?.let { snoozeUntil ->
+                    val diffMin = ((snoozeUntil - System.currentTimeMillis()) / 60000).coerceAtLeast(0)
+                    Text("• Pausa de avisos activa: $diffMin min restantes", color = Color(0xFFF59E0B), fontSize = 12.sp)
+                }
                 Text("• Versión config en celular: v${diagnostics.phoneConfigVersion}", color = Color.LightGray, fontSize = 12.sp)
                 Text("• Versión config en reloj: v${diagnostics.watchConfigVersion}", color = Color.LightGray, fontSize = 12.sp)
                 if (diagnostics.hasPendingConfig) {
@@ -595,6 +617,7 @@ fun AjustesScreen(
     quietHours: com.pulso.core.model.QuietHours,
     isSavingConfig: Boolean,
     configSaveFeedback: String?,
+    qualityMetrics: com.pulso.mobile.domain.intervention.QualityMetrics,
     onPresetSelected: (com.pulso.mobile.domain.stress.SensitivityPreset) -> Unit,
     onUpdateThresholds: (hrZ: Double, hrvZ: Double, hrOnlyZ: Double, consecA: Int, consecB: Int, cooldown: Int, dailyCap: Int) -> Unit,
     onUpdateQuietHours: (startH: Int, startM: Int, endH: Int, endM: Int) -> Unit,
@@ -602,6 +625,9 @@ fun AjustesScreen(
     onSaveConfig: () -> Unit,
     onOpenLab: () -> Unit,
     onNavigateToBaseline: () -> Unit,
+    onCancelSnooze: () -> Unit,
+    onApplyAdaptiveSuggestion: () -> Unit,
+    onDismissAdaptiveSuggestion: () -> Unit,
     onRevokeConsent: () -> Unit
 ) {
     Column(
@@ -620,12 +646,17 @@ fun AjustesScreen(
             quietHours = quietHours,
             isSaving = isSavingConfig,
             saveFeedback = configSaveFeedback,
+            qualityMetrics = qualityMetrics,
+            adaptiveSuggestion = diagnostics.adaptiveSuggestion,
             onPresetSelected = onPresetSelected,
             onUpdateThresholds = onUpdateThresholds,
             onUpdateQuietHours = onUpdateQuietHours,
             onResetDefaults = onResetDefaults,
             onSaveConfig = onSaveConfig,
-            onOpenLab = onOpenLab
+            onOpenLab = onOpenLab,
+            onCancelSnooze = onCancelSnooze,
+            onApplyAdaptiveSuggestion = onApplyAdaptiveSuggestion,
+            onDismissAdaptiveSuggestion = onDismissAdaptiveSuggestion
         )
 
         Spacer(modifier = Modifier.height(14.dp))
@@ -669,6 +700,62 @@ fun AjustesScreen(
             modifier = Modifier.fillMaxWidth().height(48.dp)
         ) {
             Text("Retirar consentimiento de medición", fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun ChatPlaceholderScreen(onBack: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("💬", fontSize = 48.sp)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            "Espacio de Acompañamiento",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            "Elegiste 'Hablar' desde tu reloj. Queremos escucharte y brindarte un espacio de calma.",
+            fontSize = 14.sp,
+            color = Color(0xFF94A3B8),
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    "El asistente conversacional llega en la Parte 8.",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = Color(0xFF38BDF8)
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    "Por ahora registramos tu intención de diálogo para calibrar las intervenciones. No generamos respuestas simuladas.",
+                    fontSize = 12.sp,
+                    color = Color.LightGray
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = onBack,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+            modifier = Modifier.fillMaxWidth().height(44.dp)
+        ) {
+            Text("Volver al inicio", fontSize = 14.sp)
         }
     }
 }

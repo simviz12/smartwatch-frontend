@@ -75,10 +75,24 @@ class MobileViewModel(
         .map { it?.toDomain() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    val stressEvents: StateFlow<List<StressEvent>> = stressEventDao
+    val stressEventEntities: StateFlow<List<com.pulso.mobile.data.local.PhoneStressEventEntity>> = stressEventDao
         .getAllEventsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val stressEvents: StateFlow<List<StressEvent>> = stressEventEntities
         .map { list -> list.map { it.toDomain() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // 30-day intervention quality metrics
+    private val thirtyDaysAgo: Long
+        get() = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
+
+    val qualityMetrics: StateFlow<com.pulso.mobile.domain.intervention.QualityMetrics> = stressEventEntities
+        .map { list ->
+            val recentEvents = list.filter { it.time >= thirtyDaysAgo }
+            com.pulso.mobile.domain.intervention.InterventionQualityAggregator.computeMetrics(recentEvents)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.pulso.mobile.domain.intervention.InterventionQualityAggregator.computeMetrics(emptyList()))
 
     // Compute rolling 14-day baseline from phone database
     private val fourteenDaysAgo: Long
@@ -194,6 +208,33 @@ class MobileViewModel(
                 configSaveFeedback = if (success) "Configuración sincronizada exitosamente con el reloj" else "Guardado localmente. Se enviará al conectar el reloj."
             )
         }
+    }
+
+    fun updateEventFeedback(eventId: String, feedback: String) {
+        viewModelScope.launch {
+            stressEventDao.updateFeedback(eventId, feedback)
+        }
+    }
+
+    fun cancelSnooze() {
+        viewModelScope.launch {
+            val current = _uiState.value.stressConfig
+            val cleared = current.copy(snoozeUntil = null)
+            _uiState.value = _uiState.value.copy(stressConfig = cleared)
+            saveConfig()
+        }
+    }
+
+    fun applyAdaptiveSuggestion() {
+        viewModelScope.launch {
+            // Suggestion: raise thresholds by switching to BAJA sensitivity preset or adjusting z-scores
+            onPresetSelected(SensitivityPreset.BAJA)
+            saveConfig()
+        }
+    }
+
+    fun dismissAdaptiveSuggestion() {
+        // Clear suggestion in diagnostics
     }
 
     // --- Replay Lab Actions ---

@@ -14,7 +14,8 @@ data class PhoneStressEventEntity(
     val confidence: Double,
     val reasonsJson: String,
     val windowsUsedJson: String,
-    val configVersion: Int
+    val configVersion: Int,
+    val userFeedback: String? = null // e.g. "TALK", "BREATHE", "DISMISS", "NOT_STRESSED", "IGNORED", "REVISED_STRESSED"
 ) {
     fun toDomain(): StressEvent {
         val reasons = try {

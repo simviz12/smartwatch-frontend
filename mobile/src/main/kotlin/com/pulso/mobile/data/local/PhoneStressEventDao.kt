@@ -17,6 +17,15 @@ interface PhoneStressEventDao {
     @Query("SELECT * FROM phone_stress_events ORDER BY time DESC")
     fun getAllEventsFlow(): Flow<List<PhoneStressEventEntity>>
 
+    @Query("SELECT * FROM phone_stress_events WHERE id = :eventId LIMIT 1")
+    suspend fun getEventById(eventId: String): PhoneStressEventEntity?
+
+    @Query("UPDATE phone_stress_events SET userFeedback = :feedback WHERE id = :eventId")
+    suspend fun updateFeedback(eventId: String, feedback: String)
+
+    @Query("SELECT * FROM phone_stress_events WHERE time >= :sinceTimestamp ORDER BY time DESC")
+    suspend fun getEventsSince(sinceTimestamp: Long): List<PhoneStressEventEntity>
+
     @Query("SELECT * FROM phone_stress_events ORDER BY time DESC LIMIT 1")
     fun getLatestEventFlow(): Flow<PhoneStressEventEntity?>
 

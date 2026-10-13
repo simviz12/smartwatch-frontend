@@ -49,7 +49,10 @@ data class MobileDiagnosticsState(
     val totalEventsStored: Int = 0,
     val phoneConfigVersion: Int = 1,
     val watchConfigVersion: Int = 1,
-    val hasPendingConfig: Boolean = false
+    val hasPendingConfig: Boolean = false,
+    val lastFeedbackReceived: com.pulso.core.intervention.InterventionFeedback? = null,
+    val activeSnoozeUntil: Long? = null,
+    val adaptiveSuggestion: com.pulso.core.intervention.AdaptiveSuggestion? = null
 )
 
 class MobileSyncManager private constructor(private val context: Context) :
@@ -295,11 +298,27 @@ class MobileSyncManager private constructor(private val context: Context) :
         }
     }
 
+    private val interventionStateMachine = com.pulso.core.intervention.InterventionStateMachine(
+        adaptiveThresholdK = 3,
+        adaptiveHelpEnabled = true
+    )
+
     private fun handleFeedbackMessage(messageEvent: MessageEvent) {
         scope.launch {
             try {
                 val feedback = com.pulso.core.intervention.InterventionFeedback.fromByteArray(messageEvent.data)
                 Log.i(TAG, "Received InterventionFeedback from watch: eventId=${feedback.eventId}, action=${feedback.action}")
+
+                // Update event feedback in Room
+                database.phoneStressEventDao().updateFeedback(feedback.eventId, feedback.action.name)
+
+                // Process in adaptive state machine
+                val suggestion = interventionStateMachine.processFeedback(feedback)
+
+                _diagnosticsState.value = _diagnosticsState.value.copy(
+                    lastFeedbackReceived = feedback,
+                    adaptiveSuggestion = suggestion ?: _diagnosticsState.value.adaptiveSuggestion
+                )
 
                 // Acknowledge back to watch
                 val ack = com.pulso.core.intervention.FeedbackAck(
@@ -327,12 +346,55 @@ class MobileSyncManager private constructor(private val context: Context) :
                 val cmd = com.pulso.core.intervention.WatchCommand.fromByteArray(messageEvent.data)
                 Log.i(TAG, "Received WatchCommand from watch: type=${cmd.type}, eventId=${cmd.eventId}")
                 if (cmd.type == com.pulso.core.intervention.WatchCommand.TYPE_OPEN_CHAT) {
-                    // Chat command received from watch (Part 8/9 will surface active chat screen)
                     Log.i(TAG, "Command OPEN_CHAT triggered from gentle intervention on watch for event ${cmd.eventId}")
+                    postOpenChatNotification(cmd.eventId)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to handle WatchCommand", e)
             }
+        }
+    }
+
+    private fun postOpenChatNotification(eventId: String?) {
+        try {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            val channelId = "pulso_mobile_chat_channel"
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                val channel = android.app.NotificationChannel(
+                    channelId,
+                    "Conversación de apoyo",
+                    android.app.NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Avisos para iniciar conversación de apoyo desde el reloj"
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val intent = android.content.Intent(context, com.pulso.mobile.presentation.MainActivity::class.java).apply {
+                flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("route", "chat_placeholder")
+                putExtra("eventId", eventId)
+            }
+            val pendingIntent = android.app.PendingIntent.getActivity(
+                context,
+                100,
+                intent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val notification = androidx.core.app.NotificationCompat.Builder(context, channelId)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle("Pulso")
+                .setContentText("Abre Pulso para hablar")
+                .setStyle(androidx.core.app.NotificationCompat.BigTextStyle().bigText("Tu reloj solicitó abrir el espacio de conversación."))
+                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build()
+
+            notificationManager.notify(7001, notification)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to post open chat notification on mobile", e)
         }
     }
 
