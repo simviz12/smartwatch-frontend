@@ -93,18 +93,54 @@ class MainActivity : ComponentActivity() {
         checkAndRequestPermissions()
 
         val route = intent.getStringExtra("route")
+        var currentRoute by mutableStateOf(route)
 
         setContent {
             PulsoWearTheme {
-                if (route == "breathing") {
-                    BreathingPlaceholderScreen(onBack = { finish() })
+                val uiState by viewModel.uiState.collectAsState()
+                val breathingManager = remember { com.pulso.wear.data.breathing.WearBreathingSessionManager.getInstance(this@MainActivity) }
+                val breathingSnapshot by breathingManager.currentSnapshot.collectAsState()
+                val displayMode by breathingManager.displayMode.collectAsState()
+                val liveHr = uiState.liveHeartRate.bpm
+
+                if (currentRoute == "breathing") {
+                    com.pulso.wear.presentation.components.BreathingSessionScreen(
+                        snapshot = breathingSnapshot,
+                        displayMode = displayMode,
+                        liveHr = liveHr,
+                        onToggleDisplayMode = {
+                            val nextMode = if (displayMode == com.pulso.wear.data.breathing.BreathingDisplayMode.VIBRATION_ONLY) {
+                                com.pulso.wear.data.breathing.BreathingDisplayMode.VISUAL_GUIDE
+                            } else {
+                                com.pulso.wear.data.breathing.BreathingDisplayMode.VIBRATION_ONLY
+                            }
+                            breathingManager.setDisplayMode(nextMode)
+                        },
+                        onStartSession = { plan, minutes, mode ->
+                            breathingManager.startSession(plan = plan, mode = mode, currentHr = liveHr)
+                        },
+                        onStopSession = {
+                            breathingManager.stopSession(com.pulso.core.breathing.SessionEndReason.USER_STOPPED)
+                        },
+                        onSaveFeeling = { feeling ->
+                            breathingManager.saveFeeling(feeling)
+                        },
+                        onFinishScreen = {
+                            if (route == "breathing") {
+                                finish()
+                            } else {
+                                currentRoute = null
+                            }
+                        }
+                    )
                 } else {
                     MainScreen(
                         viewModel = viewModel,
+                        onOpenBreathing = { currentRoute = "breathing" },
                         onCopyReport = {
-                            val path = viewModel.saveReportToFile(this)
+                            val path = viewModel.saveReportToFile(this@MainActivity)
                             Log.i("PulsoReport", "Capability report saved: $path")
-                            Toast.makeText(this, "Guardado en $path", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@MainActivity, "Guardado en $path", Toast.LENGTH_LONG).show()
                         }
                     )
                 }
@@ -141,6 +177,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(
     viewModel: MainViewModel,
+    onOpenBreathing: () -> Unit,
     onCopyReport: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -170,6 +207,21 @@ fun MainScreen(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colors.primary,
                         letterSpacing = 2.sp
+                    )
+                }
+            }
+
+            // Ejercicio de Respiración
+            item {
+                Button(
+                    onClick = onOpenBreathing,
+                    modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
+                    colors = ButtonDefaults.primaryButtonColors(backgroundColor = Color(0xFF0284C7))
+                ) {
+                    Text(
+                        text = "🫁 Respiración guiada",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -407,52 +459,6 @@ fun MainScreen(
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-            }
-        }
-    }
-}
-
-@Composable
-fun BreathingPlaceholderScreen(onBack: () -> Unit) {
-    Scaffold(
-        timeText = { TimeText() }
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colors.background)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
-        ) {
-            Text(
-                text = "Respiración",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colors.primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Disponible pronto",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "El ejercicio guiado de respiración se habilitará en la Parte 6.",
-                fontSize = 10.sp,
-                color = Color.LightGray,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Button(
-                onClick = onBack,
-                modifier = Modifier.fillMaxWidth(0.8f).height(36.dp),
-                colors = ButtonDefaults.secondaryButtonColors()
-            ) {
-                Text("Volver", fontSize = 11.sp)
             }
         }
     }

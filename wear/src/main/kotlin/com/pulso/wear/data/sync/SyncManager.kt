@@ -168,6 +168,16 @@ class SyncManager private constructor(private val context: Context) :
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to parse FeedbackAck message", e)
             }
+        } else if (messageEvent.path == DataLayerContracts.BREATHING_ACK_PATH) {
+            try {
+                val ack = com.pulso.core.breathing.BreathingAck.fromByteArray(messageEvent.data)
+                Log.i(TAG, "Received BreathingAck: sessionId=${ack.sessionId}")
+                scope.launch {
+                    database.breathingSessionDao().markSessionSynced(ack.sessionId)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to parse BreathingAck message", e)
+            }
         }
     }
 
@@ -215,6 +225,30 @@ class SyncManager private constructor(private val context: Context) :
             true
         } catch (e: Exception) {
             Log.w(TAG, "Failed to send WatchCommand to phone: ${e.message}")
+            false
+        }
+    }
+
+    suspend fun sendBreathingSession(record: com.pulso.core.breathing.BreathingSessionRecord): Boolean = withContext(Dispatchers.IO) {
+        val connectedNodes = try {
+            Tasks.await(nodeClient.connectedNodes)
+        } catch (e: Exception) {
+            emptyList()
+        }
+        val phoneNode = connectedNodes.firstOrNull() ?: return@withContext false
+
+        try {
+            Tasks.await(
+                messageClient.sendMessage(
+                    phoneNode.id,
+                    DataLayerContracts.BREATHING_PATH,
+                    record.toByteArray()
+                )
+            )
+            Log.i(TAG, "Sent BreathingSessionRecord to ${phoneNode.displayName}: sessionId=${record.sessionId}")
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to send BreathingSessionRecord to phone: ${e.message}")
             false
         }
     }

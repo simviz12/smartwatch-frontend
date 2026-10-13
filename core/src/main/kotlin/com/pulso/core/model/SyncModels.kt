@@ -28,6 +28,7 @@ data class ConfigSync(
     val windowMinutes: Int = 5,
     val quietHours: QuietHours? = null,
     val stressConfig: com.pulso.core.stress.StressConfig = com.pulso.core.stress.StressConfig(),
+    val breathingConfig: com.pulso.core.breathing.BreathingConfig = com.pulso.core.breathing.BreathingConfig(),
     val updatedAt: Long
 ) {
     init {
