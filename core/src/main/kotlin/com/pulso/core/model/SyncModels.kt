@@ -168,6 +168,7 @@ data class WatchStatus(
     val watchModel: String,
     val permissions: Map<String, Boolean>,
     val baselineStatus: Map<String, com.pulso.core.baseline.BucketStats>? = null,
+    val stressConfigVersion: Int? = null,
     val sentAt: Long
 ) {
     init {

@@ -5,9 +5,10 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [PhoneWindowEntity::class], version = 1, exportSchema = false)
+@Database(entities = [PhoneWindowEntity::class, PhoneStressEventEntity::class], version = 2, exportSchema = false)
 abstract class PulsoMobileDatabase : RoomDatabase() {
     abstract fun phoneWindowDao(): PhoneWindowDao
+    abstract fun phoneStressEventDao(): PhoneStressEventDao
 
     companion object {
         @Volatile
@@ -19,7 +20,7 @@ abstract class PulsoMobileDatabase : RoomDatabase() {
                     context.applicationContext,
                     PulsoMobileDatabase::class.java,
                     "pulso_mobile.db"
-                ).build()
+                ).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance
             }

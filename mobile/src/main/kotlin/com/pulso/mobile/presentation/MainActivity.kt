@@ -58,7 +58,11 @@ class MainActivity : ComponentActivity() {
     private val viewModel: MobileViewModel by viewModels {
         val syncManager = MobileSyncManager.getInstance(this)
         val database = PulsoMobileDatabase.getInstance(this)
-        MobileViewModel.provideFactory(syncManager, database.phoneWindowDao())
+        MobileViewModel.provideFactory(
+            syncManager = syncManager,
+            windowDao = database.phoneWindowDao(),
+            stressEventDao = database.phoneStressEventDao()
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -109,6 +113,12 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                         onClick = { viewModel.selectTab(0) },
                         label = { Text("Hoy") },
                         icon = { Text("📊") }
+                    )
+                    NavigationBarItem(
+                        selected = uiState.selectedTab == 4,
+                        onClick = { viewModel.selectTab(4) },
+                        label = { Text("Eventos") },
+                        icon = { Text("⚡") }
                     )
                     NavigationBarItem(
                         selected = uiState.selectedTab == 3,
@@ -162,6 +172,19 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                 uiState.selectedTab == 2 -> {
                     AjustesScreen(
                         diagnostics = diagnostics,
+                        currentConfig = uiState.stressConfig,
+                        currentPreset = uiState.sensitivityPreset,
+                        quietHours = uiState.quietHours,
+                        isSavingConfig = uiState.isSavingConfig,
+                        configSaveFeedback = uiState.configSaveFeedback,
+                        onPresetSelected = { viewModel.onPresetSelected(it) },
+                        onUpdateThresholds = { hrZ, hrvZ, hrOnlyZ, a, b, cd, cap ->
+                            viewModel.onUpdateThresholds(hrZ, hrvZ, hrOnlyZ, a, b, cd, cap)
+                        },
+                        onUpdateQuietHours = { sh, sm, eh, em -> viewModel.onUpdateQuietHours(sh, sm, eh, em) },
+                        onResetDefaults = { viewModel.resetToDefaultConfig() },
+                        onSaveConfig = { viewModel.saveConfig() },
+                        onOpenLab = { viewModel.selectTab(5) },
                         onNavigateToBaseline = { viewModel.selectTab(3) },
                         onRevokeConsent = { viewModel.revokeConsent() }
                     )
@@ -171,6 +194,29 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                         baseline = phoneBaseline,
                         onResetBaseline = { viewModel.resetBaseline() },
                         resetFeedback = uiState.resetFeedback
+                    )
+                }
+                uiState.selectedTab == 4 -> {
+                    val stressEvents by viewModel.stressEvents.collectAsState()
+                    com.pulso.mobile.presentation.components.StressEventListScreen(
+                        events = stressEvents,
+                        onBack = { viewModel.selectTab(0) }
+                    )
+                }
+                uiState.selectedTab == 5 -> {
+                    com.pulso.mobile.presentation.components.ReplayLabScreen(
+                        currentConfig = uiState.stressConfig,
+                        daysRange = uiState.replayDaysRange,
+                        isRunning = uiState.isRunningReplay,
+                        result = uiState.replayResult,
+                        feedback = uiState.replayFeedback,
+                        onDaysRangeChange = { viewModel.setReplayDaysRange(it) },
+                        onRunReplay = { viewModel.runReplaySimulation() },
+                        onApplyConfig = {
+                            viewModel.applyLabConfigToSettings(it)
+                            viewModel.selectTab(2)
+                        },
+                        onBack = { viewModel.selectTab(2) }
                     )
                 }
             }
@@ -500,6 +546,25 @@ fun DiagnosticoScreen(
             }
         }
 
+        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)), modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text("Detección y Eventos", fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("• Total eventos almacenados: ${diagnostics.totalEventsStored}", color = Color.White, fontSize = 13.sp)
+                diagnostics.lastEventReceived?.let { ev ->
+                    val timeStr = Date(ev.time).toString()
+                    Text("• Último evento: $timeStr (Confianza: ${(ev.confidence * 100).toInt()}%)", color = Color(0xFFFBBF24), fontSize = 12.sp)
+                } ?: Text("• Último evento: Ninguno registrado aún", color = Color.LightGray, fontSize = 12.sp)
+                Text("• Versión config en celular: v${diagnostics.phoneConfigVersion}", color = Color.LightGray, fontSize = 12.sp)
+                Text("• Versión config en reloj: v${diagnostics.watchConfigVersion}", color = Color.LightGray, fontSize = 12.sp)
+                if (diagnostics.hasPendingConfig) {
+                    Text("• Sincronización de config: PENDIENTE (esperando confirmación del reloj)", color = Color(0xFFFBBF24), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                } else {
+                    Text("• Sincronización de config: AL DÍA", color = Color(0xFF4ADE80), fontSize = 12.sp)
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
@@ -525,17 +590,45 @@ fun DiagnosticoScreen(
 @Composable
 fun AjustesScreen(
     diagnostics: MobileDiagnosticsState,
+    currentConfig: com.pulso.core.stress.StressConfig,
+    currentPreset: com.pulso.mobile.domain.stress.SensitivityPreset,
+    quietHours: com.pulso.core.model.QuietHours,
+    isSavingConfig: Boolean,
+    configSaveFeedback: String?,
+    onPresetSelected: (com.pulso.mobile.domain.stress.SensitivityPreset) -> Unit,
+    onUpdateThresholds: (hrZ: Double, hrvZ: Double, hrOnlyZ: Double, consecA: Int, consecB: Int, cooldown: Int, dailyCap: Int) -> Unit,
+    onUpdateQuietHours: (startH: Int, startM: Int, endH: Int, endM: Int) -> Unit,
+    onResetDefaults: () -> Unit,
+    onSaveConfig: () -> Unit,
+    onOpenLab: () -> Unit,
     onNavigateToBaseline: () -> Unit,
     onRevokeConsent: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(20.dp)
+            .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
         Text("Ajustes y Parámetros", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Sensitivity Section
+        com.pulso.mobile.presentation.components.SensitivitySettingsSection(
+            currentConfig = currentConfig,
+            currentPreset = currentPreset,
+            quietHours = quietHours,
+            isSaving = isSavingConfig,
+            saveFeedback = configSaveFeedback,
+            onPresetSelected = onPresetSelected,
+            onUpdateThresholds = onUpdateThresholds,
+            onUpdateQuietHours = onUpdateQuietHours,
+            onResetDefaults = onResetDefaults,
+            onSaveConfig = onSaveConfig,
+            onOpenLab = onOpenLab
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         Card(
             colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),

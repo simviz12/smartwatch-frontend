@@ -32,6 +32,12 @@ interface PhoneWindowDao {
     @Query("SELECT * FROM phone_measurement_windows WHERE windowStart >= :sinceTimestamp ORDER BY windowStart ASC")
     suspend fun getWindowsSince(sinceTimestamp: Long): List<PhoneWindowEntity>
 
+    @Query("SELECT * FROM phone_measurement_windows WHERE windowStart >= :startTimestamp AND windowStart <= :endTimestamp ORDER BY windowStart ASC")
+    suspend fun getWindowsBetween(startTimestamp: Long, endTimestamp: Long): List<PhoneWindowEntity>
+
+    @Query("SELECT * FROM phone_measurement_windows ORDER BY windowStart ASC")
+    suspend fun getAllWindows(): List<PhoneWindowEntity>
+
     @Query("DELETE FROM phone_measurement_windows")
     suspend fun clearAll()
 }

@@ -19,6 +19,9 @@ import com.pulso.core.model.WatchStatus
 import com.pulso.mobile.data.local.PhoneWindowDao
 import com.pulso.mobile.data.local.PhoneWindowEntity
 import com.pulso.mobile.data.local.PulsoMobileDatabase
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -41,7 +44,12 @@ data class MobileDiagnosticsState(
     val lastSyncAcceptedCount: Int = 0,
     val lastPingRoundtripMs: Long? = null,
     val lastError: String? = null,
-    val baselineMismatch: String? = null
+    val baselineMismatch: String? = null,
+    val lastEventReceived: com.pulso.core.stress.StressEvent? = null,
+    val totalEventsStored: Int = 0,
+    val phoneConfigVersion: Int = 1,
+    val watchConfigVersion: Int = 1,
+    val hasPendingConfig: Boolean = false
 )
 
 class MobileSyncManager private constructor(private val context: Context) :
@@ -98,13 +106,76 @@ class MobileSyncManager private constructor(private val context: Context) :
             consentTimestamp = now
         )
 
-        val config = ConfigSync(
+        val config = loadPersistedConfig().copy(
             collectionEnabled = granted,
             consentVersion = if (granted) version else null,
-            windowMinutes = 5,
             updatedAt = now
         )
-        sendConfigToWatch(config)
+        persistAndSendConfig(config)
+    }
+
+    fun loadPersistedConfig(): ConfigSync {
+        val granted = sharedPrefs.getBoolean(KEY_CONSENT_GRANTED, false)
+        val consentVer = sharedPrefs.getString(KEY_CONSENT_VERSION, null)
+        val stressJson = sharedPrefs.getString(KEY_STRESS_CONFIG, null)
+        val stressConfig = if (stressJson != null) {
+            try {
+                kotlinx.serialization.json.Json.decodeFromString<com.pulso.core.stress.StressConfig>(stressJson)
+            } catch (e: Exception) {
+                com.pulso.core.stress.StressConfig()
+            }
+        } else com.pulso.core.stress.StressConfig()
+
+        val qStartH = sharedPrefs.getInt(KEY_QUIET_START_H, 22)
+        val qStartM = sharedPrefs.getInt(KEY_QUIET_START_M, 0)
+        val qEndH = sharedPrefs.getInt(KEY_QUIET_END_H, 7)
+        val qEndM = sharedPrefs.getInt(KEY_QUIET_END_M, 0)
+        val quiet = com.pulso.core.model.QuietHours(qStartH, qStartM, qEndH, qEndM)
+
+        return ConfigSync(
+            collectionEnabled = granted,
+            consentVersion = consentVer,
+            windowMinutes = 5,
+            quietHours = quiet,
+            stressConfig = stressConfig,
+            updatedAt = sharedPrefs.getLong(KEY_CONFIG_UPDATED_AT, System.currentTimeMillis())
+        )
+    }
+
+    suspend fun updateStressAndQuietConfig(
+        stressConfig: com.pulso.core.stress.StressConfig,
+        quietHours: com.pulso.core.model.QuietHours?
+    ): Boolean = withContext(Dispatchers.IO) {
+        val current = loadPersistedConfig()
+        val newConfig = current.copy(
+            stressConfig = stressConfig.copy(version = stressConfig.version + 1),
+            quietHours = quietHours,
+            updatedAt = System.currentTimeMillis()
+        )
+        persistAndSendConfig(newConfig)
+    }
+
+    private suspend fun persistAndSendConfig(config: ConfigSync): Boolean {
+        sharedPrefs.edit()
+            .putString(KEY_STRESS_CONFIG, kotlinx.serialization.json.Json.encodeToString(config.stressConfig))
+            .putLong(KEY_CONFIG_UPDATED_AT, config.updatedAt)
+            .apply()
+
+        config.quietHours?.let {
+            sharedPrefs.edit()
+                .putInt(KEY_QUIET_START_H, it.startHour)
+                .putInt(KEY_QUIET_START_M, it.startMinute)
+                .putInt(KEY_QUIET_END_H, it.endHour)
+                .putInt(KEY_QUIET_END_M, it.endMinute)
+                .apply()
+        }
+
+        _diagnosticsState.value = _diagnosticsState.value.copy(
+            phoneConfigVersion = config.stressConfig.version,
+            hasPendingConfig = true
+        )
+
+        return sendConfigToWatch(config)
     }
 
     suspend fun sendConfigToWatch(config: ConfigSync): Boolean = withContext(Dispatchers.IO) {
@@ -114,7 +185,8 @@ class MobileSyncManager private constructor(private val context: Context) :
             }
             val putDataReq = putDataMapReq.asPutDataRequest().setUrgent()
             Tasks.await(dataClient.putDataItem(putDataReq))
-            Log.i(TAG, "Successfully synchronized /pulso/v1/config to Wearable DataLayer: enabled=${config.collectionEnabled}")
+            Log.i(TAG, "Successfully synchronized /pulso/v1/config to Wearable DataLayer: enabled=${config.collectionEnabled}, stressVer=${config.stressConfig.version}")
+            _diagnosticsState.value = _diagnosticsState.value.copy(hasPendingConfig = false)
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to synchronize /pulso/v1/config", e)
@@ -217,6 +289,43 @@ class MobileSyncManager private constructor(private val context: Context) :
         when (messageEvent.path) {
             DataLayerContracts.SAMPLES_PATH -> handleSamplesMessage(messageEvent)
             DataLayerContracts.STATUS_PATH -> handleStatusMessage(messageEvent)
+            DataLayerContracts.EVENTS_PATH -> handleEventsMessage(messageEvent)
+        }
+    }
+
+    private fun handleEventsMessage(messageEvent: MessageEvent) {
+        scope.launch {
+            try {
+                val batch = com.pulso.core.stress.StressEventsBatch.fromByteArray(messageEvent.data)
+                Log.i(TAG, "Received StressEventsBatch with ${batch.events.size} events from watch ${batch.watchId}")
+
+                val entities = batch.events.map { com.pulso.mobile.data.local.PhoneStressEventEntity.fromDomain(it) }
+                database.phoneStressEventDao().insertOrUpdateAll(entities)
+
+                val count = database.phoneStressEventDao().countEvents()
+                _diagnosticsState.value = _diagnosticsState.value.copy(
+                    lastEventReceived = batch.events.lastOrNull(),
+                    totalEventsStored = count,
+                    lastError = null
+                )
+
+                // Dispatch ACK back to watch
+                val ack = com.pulso.core.stress.StressEventsAck(
+                    acceptedCount = entities.size,
+                    lastEventId = batch.events.lastOrNull()?.id
+                )
+                Tasks.await(
+                    messageClient.sendMessage(
+                        messageEvent.sourceNodeId,
+                        DataLayerContracts.EVENTS_ACK_PATH,
+                        ack.toByteArray()
+                    )
+                )
+                Log.i(TAG, "Sent StressEventsAck to watch accepted=${entities.size}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to parse or persist StressEventsBatch", e)
+                _diagnosticsState.value = _diagnosticsState.value.copy(lastError = "Error procesando eventos de estrés: ${e.message}")
+            }
         }
     }
 
@@ -271,9 +380,12 @@ class MobileSyncManager private constructor(private val context: Context) :
     private fun handleStatusMessage(messageEvent: MessageEvent) {
         try {
             val status = WatchStatus.fromByteArray(messageEvent.data)
-            Log.d(TAG, "Received WatchStatus: battery=${status.batteryPct}%, model=${status.watchModel}, serviceRunning=${status.serviceRunning}")
+            Log.d(TAG, "Received WatchStatus: battery=${status.batteryPct}%, model=${status.watchModel}, serviceRunning=${status.serviceRunning}, stressVer=${status.stressConfigVersion}")
+            val pending = status.stressConfigVersion != null && status.stressConfigVersion != _diagnosticsState.value.phoneConfigVersion
             _diagnosticsState.value = _diagnosticsState.value.copy(
                 lastWatchStatus = status,
+                watchConfigVersion = status.stressConfigVersion ?: _diagnosticsState.value.watchConfigVersion,
+                hasPendingConfig = pending,
                 watchConnected = true
             )
         } catch (e: Exception) {
@@ -286,6 +398,12 @@ class MobileSyncManager private constructor(private val context: Context) :
         private const val KEY_CONSENT_GRANTED = "consent_granted"
         private const val KEY_CONSENT_VERSION = "consent_version"
         private const val KEY_CONSENT_TIMESTAMP = "consent_timestamp"
+        private const val KEY_STRESS_CONFIG = "stress_config_json"
+        private const val KEY_CONFIG_UPDATED_AT = "config_updated_at"
+        private const val KEY_QUIET_START_H = "quiet_start_h"
+        private const val KEY_QUIET_START_M = "quiet_start_m"
+        private const val KEY_QUIET_END_H = "quiet_end_h"
+        private const val KEY_QUIET_END_M = "quiet_end_m"
 
         @Volatile
         private var INSTANCE: MobileSyncManager? = null
