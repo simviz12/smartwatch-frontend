@@ -26,4 +26,7 @@ interface PhoneBreathingSessionDao {
 
     @Query("SELECT COUNT(*) FROM phone_breathing_sessions")
     suspend fun getCount(): Int
+
+    @Query("DELETE FROM phone_breathing_sessions")
+    suspend fun clearAll()
 }
