@@ -130,6 +130,30 @@ class MobileViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    val allWindows: StateFlow<List<MeasurementWindow>> = windowDao
+        .getAllWindowsFlow()
+        .map { list -> list.map { it.toDomain() } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val stressMapReport: StateFlow<com.pulso.core.aggregation.StressMapReport> = combine(
+        allWindows,
+        stressEvents,
+        breathingSessions
+    ) { windows: List<MeasurementWindow>, events: List<StressEvent>, breathings: List<com.pulso.mobile.data.local.PhoneBreathingSessionEntity> ->
+        val feelings = breathings.mapNotNull { it.feeling }
+        val durations = breathings.map { ((it.completedAt - it.startedAt) / 1000).toInt() }
+        com.pulso.core.aggregation.StressMapAggregator.aggregate(
+            windows = windows,
+            stressEvents = events,
+            breathingFeelings = feelings,
+            breathingDurations = durations
+        )
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        com.pulso.core.aggregation.StressMapAggregator.aggregate(emptyList(), emptyList())
+    )
+
     private fun loadInitialUiState(): MobileUiState {
         val configSync = syncManager.loadPersistedConfig()
         val preset = SensitivityPreset.fromConfig(configSync.stressConfig)
@@ -355,6 +379,76 @@ class MobileViewModel(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(csvImportFeedback = "Error al importar CSV: ${e.message}")
             }
+        }
+    }
+
+    fun generateDenseSampleData(days: Int = 90) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(csvImportFeedback = "Generando $days días de datos densos...")
+            val now = System.currentTimeMillis()
+            val windowDurationMs = 5 * 60 * 1000L // 5 min
+            val totalWindows = (days * 24 * 12) // 12 windows per hour
+
+            val generatedWindows = mutableListOf<com.pulso.mobile.data.local.PhoneWindowEntity>()
+            val generatedEvents = mutableListOf<com.pulso.mobile.data.local.PhoneStressEventEntity>()
+
+            var curTime = now - (days.toLong() * 24 * 60 * 60 * 1000L)
+            var count = 0
+            while (curTime < now) {
+                val hour = (curTime / (1000 * 60 * 60) % 24).toInt()
+                val isPeakHour = hour in 14..17
+                val baseHr = if (isPeakHour) 85.0 else 68.0
+                val rmssd = if (isPeakHour) 24.0 else 55.0
+
+                generatedWindows.add(
+                    com.pulso.mobile.data.local.PhoneWindowEntity(
+                        watchId = "debug-watch-01",
+                        windowStart = curTime,
+                        windowEnd = curTime + windowDurationMs,
+                        meanHr = baseHr + (count % 7),
+                        minHr = baseHr - 5,
+                        maxHr = baseHr + 12,
+                        rmssd = rmssd,
+                        validIbiCount = 280,
+                        ibiValidRatio = 0.95,
+                        activityState = "STILL",
+                        steps = 10,
+                        onBody = true,
+                        source = "DEBUG_GENERATOR"
+                    )
+                )
+
+                if (isPeakHour && count % 24 == 0) {
+                    generatedEvents.add(
+                        com.pulso.mobile.data.local.PhoneStressEventEntity(
+                            id = "debug-ev-$curTime",
+                            time = curTime,
+                            confidence = 0.88,
+                            reasonsJson = "[]",
+                            windowsUsedJson = "[$curTime]",
+                            configVersion = 1,
+                            userFeedback = if (count % 48 == 0) "HELPFUL" else null
+                        )
+                    )
+                }
+
+                curTime += windowDurationMs
+                count++
+            }
+
+            windowDao.insertOrUpdateAll(generatedWindows)
+            stressEventDao.insertOrUpdateAll(generatedEvents)
+            _uiState.value = _uiState.value.copy(csvImportFeedback = "Datos de $days días generados (${generatedWindows.size} ventanas, ${generatedEvents.eventsCountOrNull() ?: generatedEvents.size} eventos).")
+        }
+    }
+
+    private fun List<com.pulso.mobile.data.local.PhoneStressEventEntity>.eventsCountOrNull(): Int? = this.size
+
+    fun clearSampleData() {
+        viewModelScope.launch {
+            windowDao.clearAll()
+            stressEventDao.clearAll()
+            _uiState.value = _uiState.value.copy(csvImportFeedback = "Base de datos local limpiada.")
         }
     }
 

@@ -133,6 +133,12 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                         icon = { Text("🫁") }
                     )
                     NavigationBarItem(
+                        selected = uiState.selectedTab == 8,
+                        onClick = { viewModel.selectTab(8) },
+                        label = { Text("Mapa") },
+                        icon = { Text("🗺️") }
+                    )
+                    NavigationBarItem(
                         selected = uiState.selectedTab == 1,
                         onClick = { viewModel.selectTab(1) },
                         label = { Text("Diagnóstico") },
@@ -249,6 +255,16 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                         onUpdateDuration = { viewModel.updateBreathingDuration(it) },
                         onUpdateIntensity = { viewModel.updateBreathingIntensity(it) },
                         onTestOnWatch = { viewModel.testBreathingOnWatch() }
+                    )
+                }
+                uiState.selectedTab == 8 -> {
+                    val mapReport by viewModel.stressMapReport.collectAsState()
+                    com.pulso.mobile.presentation.components.StressMapScreen(
+                        report = mapReport,
+                        isImportingSample = false,
+                        sampleImportFeedback = uiState.csvImportFeedback,
+                        onGenerateSampleData = { viewModel.generateDenseSampleData(90) },
+                        onClearSampleData = { viewModel.clearSampleData() }
                     )
                 }
             }
