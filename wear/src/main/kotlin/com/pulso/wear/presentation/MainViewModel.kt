@@ -175,6 +175,22 @@ class MainViewModel(
         }
     }
 
+    fun simulateStress(context: Context) {
+        viewModelScope.launch {
+            try {
+                val detector = com.pulso.wear.data.stress.WearStressDetector.getInstance(context)
+                val event = detector.simulateStressDebug()
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = "Estrés simulado: ${event.id.take(8)}"
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = "Fallo simulación: ${e.message}"
+                )
+            }
+        }
+    }
+
     companion object {
         fun provideFactory(
             getConnectedPhoneUseCase: GetConnectedPhoneUseCase,

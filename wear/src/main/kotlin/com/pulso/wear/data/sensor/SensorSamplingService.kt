@@ -146,6 +146,10 @@ class SensorSamplingService : Service() {
                     database.windowDao().insertWindow(WindowEntity.fromDomain(window, synced = false))
                     Log.i(TAG, "Saved window: meanHr=$meanHr, minHr=$minHr, maxHr=$maxHr, samples=${windowSamples.size}")
 
+                    // Evaluate stress in OBSERVE-ONLY mode
+                    com.pulso.wear.data.stress.WearStressDetector.getInstance(this@SensorSamplingService)
+                        .onNewWindowRecorded(window)
+
                     // Send status update
                     syncManager.sendStatusUpdate(serviceRunning = true, lastWindowAt = windowEnd)
                 } else {

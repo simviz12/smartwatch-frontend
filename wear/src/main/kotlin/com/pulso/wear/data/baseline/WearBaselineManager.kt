@@ -32,6 +32,10 @@ class WearBaselineManager private constructor(private val context: Context) {
         }
     }
 
+    fun getBaseline(): Baseline? {
+        return _currentBaseline.value ?: loadPersistedBaseline()
+    }
+
     private fun persistBaseline(baseline: Baseline) {
         val rawJson = json.encodeToString(baseline)
         sharedPrefs.edit()

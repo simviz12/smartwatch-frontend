@@ -139,6 +139,55 @@ class SyncManager private constructor(private val context: Context) :
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to parse WatchCommand message", e)
             }
+        } else if (messageEvent.path == DataLayerContracts.EVENTS_ACK_PATH) {
+            try {
+                val ack = com.pulso.core.stress.StressEventsAck.fromByteArray(messageEvent.data)
+                Log.i(TAG, "Received StressEventsAck: acceptedCount=${ack.acceptedCount}, lastEventId=${ack.lastEventId}")
+                scope.launch {
+                    val unsynced = database.stressEventDao().getUnsyncedEvents()
+                    val toMark = unsynced.take(ack.acceptedCount).map { it.id }
+                    if (toMark.isNotEmpty()) {
+                        database.stressEventDao().markEventsAsSynced(toMark)
+                        Log.i(TAG, "Marked ${toMark.size} stress events as synced on watch")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to parse StressEventsAck message", e)
+            }
+        }
+    }
+
+    suspend fun syncStressEventsNow(): Int = withContext(Dispatchers.IO) {
+        val unsynced = database.stressEventDao().getUnsyncedEvents()
+        if (unsynced.isEmpty()) return@withContext 0
+
+        val connectedNodes = try {
+            Tasks.await(nodeClient.connectedNodes)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to query connected nodes for stress events: ${e.message}")
+            return@withContext 0
+        }
+
+        val phoneNode = connectedNodes.firstOrNull() ?: return@withContext 0
+        val domainEvents = unsynced.map { it.toDomain() }
+        val batch = com.pulso.core.stress.StressEventsBatch(
+            watchId = "${Build.MANUFACTURER}_${Build.MODEL}",
+            events = domainEvents
+        )
+
+        try {
+            Tasks.await(
+                messageClient.sendMessage(
+                    phoneNode.id,
+                    DataLayerContracts.EVENTS_PATH,
+                    batch.toByteArray()
+                )
+            )
+            Log.i(TAG, "Sent StressEventsBatch with ${domainEvents.size} events to ${phoneNode.displayName}")
+            domainEvents.size
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to send stress events batch: ${e.message}")
+            0
         }
     }
 

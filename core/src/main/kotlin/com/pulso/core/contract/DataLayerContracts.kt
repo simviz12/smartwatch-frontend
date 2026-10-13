@@ -22,6 +22,12 @@ object DataLayerContracts {
     const val COMMANDS_PATH = "/pulso/v1/commands"
     const val COMMANDS_SCHEMA_VERSION = 1
 
+    const val EVENTS_PATH = "/pulso/v1/events"
+    const val EVENTS_SCHEMA_VERSION = 1
+
+    const val EVENTS_ACK_PATH = "/pulso/v1/events-ack"
+    const val EVENTS_ACK_SCHEMA_VERSION = 1
+
     object Source {
         const val WATCH = "watch"
         const val PHONE = "phone"

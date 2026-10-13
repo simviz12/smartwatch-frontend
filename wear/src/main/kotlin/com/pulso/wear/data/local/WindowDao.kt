@@ -17,6 +17,9 @@ interface WindowDao {
     @Query("SELECT * FROM measurement_windows ORDER BY windowStart ASC")
     suspend fun getAllWindows(): List<WindowEntity>
 
+    @Query("SELECT * FROM measurement_windows ORDER BY windowStart DESC LIMIT :limit")
+    suspend fun getRecentWindows(limit: Int): List<WindowEntity>
+
     @Query("SELECT * FROM measurement_windows WHERE synced = 0 ORDER BY windowStart ASC LIMIT :limit")
     suspend fun getUnsyncedWindows(limit: Int = 100): List<WindowEntity>
 

@@ -281,6 +281,23 @@ fun MainScreen(
                 }
             }
 
+            if (com.pulso.wear.BuildConfig.DEBUG) {
+                item {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    Button(
+                        onClick = { viewModel.simulateStress(context) },
+                        modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
+                        colors = ButtonDefaults.secondaryButtonColors()
+                    ) {
+                        Text(
+                            text = "Simular estrés (Debug)",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
             // Send Ping to Companion Button
             item {
                 Button(

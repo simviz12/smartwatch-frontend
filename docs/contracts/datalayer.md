@@ -315,3 +315,97 @@ This document specifies the messages and data items exchanged between the Wear O
   "additionalProperties": false
 }
 ```
+
+---
+
+## 7. /pulso/v1/events
+
+- **Type**: Message (`MessageClient`)
+- **Path**: `/pulso/v1/events`
+- **Schema Version**: `1`
+- **Sender**: Wear OS Watch (`"watch"`)
+- **Receiver**: Android Phone (`"phone"`)
+- **Delivery Guarantees**: Point-to-point delivery of stress events; phone acknowledges via `/pulso/v1/events-ack`. Idempotent by `event.id`.
+- **Payload Format**: JSON (UTF-8 bytes)
+
+### JSON Schema
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StressEventsBatch",
+  "type": "object",
+  "required": ["schemaVersion", "watchId", "events"],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "watchId": {
+      "type": "string"
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "time", "confidence", "reasons", "windowsUsed", "configVersion"],
+        "properties": {
+          "id": { "type": "string" },
+          "time": { "type": "integer" },
+          "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["code", "description"]
+            }
+          },
+          "windowsUsed": {
+            "type": "array",
+            "items": { "type": "integer" }
+          },
+          "configVersion": { "type": "integer" }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+---
+
+## 8. /pulso/v1/events-ack
+
+- **Type**: Message (`MessageClient`)
+- **Path**: `/pulso/v1/events-ack`
+- **Schema Version**: `1`
+- **Sender**: Android Phone (`"phone"`)
+- **Receiver**: Wear OS Watch (`"watch"`)
+- **Delivery Guarantees**: Best-effort confirmation of received stress events batch.
+- **Payload Format**: JSON (UTF-8 bytes)
+
+### JSON Schema
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StressEventsAck",
+  "type": "object",
+  "required": ["schemaVersion", "acceptedCount"],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "acceptedCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "lastEventId": {
+      "type": ["string", "null"]
+    }
+  },
+  "additionalProperties": false
+}
+```
