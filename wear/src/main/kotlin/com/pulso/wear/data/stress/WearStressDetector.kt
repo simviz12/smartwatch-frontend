@@ -80,10 +80,20 @@ class WearStressDetector private constructor(private val context: Context) {
                 database.stressEventDao().insertEvent(StressEventEntity.fromDomain(event, isSynced = false))
                 Log.w(
                     TAG,
-                    "[OBSERVE-ONLY] Stress detected! EventId=${event.id}, confidence=${event.confidence}, reasons=${event.reasons.size}"
+                    "Stress detected! EventId=${event.id}, confidence=${event.confidence}, reasons=${event.reasons.size}"
                 )
                 // Schedule or trigger event sync
                 syncManager.syncStressEventsNow()
+
+                // Execute gentle intervention (soft vibration + notification)
+                val bucket = com.pulso.core.baseline.BaselineEngine.resolveBucket(
+                    timestamp = now,
+                    activityState = newWindow.activityState
+                ).name
+                com.pulso.wear.data.intervention.WearInterventionManager.getInstance(context).triggerIntervention(
+                    event = event,
+                    currentBucket = bucket
+                )
             } else {
                 Log.d(TAG, "StressEngine evaluated: triggered=false, suppressions=${decision.suppressedBy.map { it.code }}")
             }
@@ -131,6 +141,12 @@ class WearStressDetector private constructor(private val context: Context) {
         )
         database.stressEventDao().insertEvent(StressEventEntity.fromDomain(event, isSynced = false))
         syncManager.syncStressEventsNow()
+
+        // Trigger gentle intervention in simulation as well
+        com.pulso.wear.data.intervention.WearInterventionManager.getInstance(context).triggerIntervention(
+            event = event,
+            currentBucket = "AFTERNOON"
+        )
         event
     }
 

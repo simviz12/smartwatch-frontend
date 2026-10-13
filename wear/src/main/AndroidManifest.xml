@@ -10,6 +10,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:allowBackup="true"
@@ -36,6 +37,14 @@
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/pulso/v1" />
             </intent-filter>
         </service>
+
+        <receiver
+            android:name=".data.intervention.InterventionActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.pulso.wear.ACTION_INTERVENTION_CLICK" />
+            </intent-filter>
+        </receiver>
 
         <activity
             android:name=".presentation.MainActivity"

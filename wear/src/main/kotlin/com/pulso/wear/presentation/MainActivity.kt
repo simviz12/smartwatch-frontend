@@ -22,6 +22,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -89,16 +92,22 @@ class MainActivity : ComponentActivity() {
 
         checkAndRequestPermissions()
 
+        val route = intent.getStringExtra("route")
+
         setContent {
             PulsoWearTheme {
-                MainScreen(
-                    viewModel = viewModel,
-                    onCopyReport = {
-                        val path = viewModel.saveReportToFile(this)
-                        Log.i("PulsoReport", "Capability report saved: $path")
-                        Toast.makeText(this, "Guardado en $path", Toast.LENGTH_LONG).show()
-                    }
-                )
+                if (route == "breathing") {
+                    BreathingPlaceholderScreen(onBack = { finish() })
+                } else {
+                    MainScreen(
+                        viewModel = viewModel,
+                        onCopyReport = {
+                            val path = viewModel.saveReportToFile(this)
+                            Log.i("PulsoReport", "Capability report saved: $path")
+                            Toast.makeText(this, "Guardado en $path", Toast.LENGTH_LONG).show()
+                        }
+                    )
+                }
             }
         }
     }
@@ -298,6 +307,64 @@ fun MainScreen(
                 }
             }
 
+            // Pausar avisos (Snooze)
+            item {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                var showSnoozeOptions by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Button(
+                        onClick = { showSnoozeOptions = !showSnoozeOptions },
+                        modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
+                        colors = ButtonDefaults.secondaryButtonColors()
+                    ) {
+                        Text(
+                            text = if (showSnoozeOptions) "Ocultar pausa" else "Pausar avisos",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    if (showSnoozeOptions) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        androidx.compose.foundation.layout.Row(
+                            modifier = Modifier.fillMaxWidth(0.9f),
+                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    viewModel.snoozeAlerts(60L, context)
+                                    showSnoozeOptions = false
+                                },
+                                modifier = Modifier.weight(1f).height(32.dp),
+                                colors = ButtonDefaults.primaryButtonColors()
+                            ) {
+                                Text("1h", fontSize = 10.sp)
+                            }
+                            Button(
+                                onClick = {
+                                    viewModel.snoozeAlerts(240L, context)
+                                    showSnoozeOptions = false
+                                },
+                                modifier = Modifier.weight(1f).height(32.dp),
+                                colors = ButtonDefaults.primaryButtonColors()
+                            ) {
+                                Text("4h", fontSize = 10.sp)
+                            }
+                            Button(
+                                onClick = {
+                                    // Hasta mañana (~12h)
+                                    viewModel.snoozeAlerts(720L, context)
+                                    showSnoozeOptions = false
+                                },
+                                modifier = Modifier.weight(1f).height(32.dp),
+                                colors = ButtonDefaults.primaryButtonColors()
+                            ) {
+                                Text("Mañana", fontSize = 9.sp)
+                            }
+                        }
+                    }
+                }
+            }
+
             // Send Ping to Companion Button
             item {
                 Button(
@@ -340,6 +407,52 @@ fun MainScreen(
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun BreathingPlaceholderScreen(onBack: () -> Unit) {
+    Scaffold(
+        timeText = { TimeText() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colors.background)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+        ) {
+            Text(
+                text = "Respiración",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colors.primary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Disponible pronto",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "El ejercicio guiado de respiración se habilitará en la Parte 6.",
+                fontSize = 10.sp,
+                color = Color.LightGray,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onBack,
+                modifier = Modifier.fillMaxWidth(0.8f).height(36.dp),
+                colors = ButtonDefaults.secondaryButtonColors()
+            ) {
+                Text("Volver", fontSize = 11.sp)
             }
         }
     }

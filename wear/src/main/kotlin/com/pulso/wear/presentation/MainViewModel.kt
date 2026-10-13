@@ -191,6 +191,32 @@ class MainViewModel(
         }
     }
 
+    fun snoozeAlerts(durationMinutes: Long, context: Context) {
+        viewModelScope.launch {
+            try {
+                val until = System.currentTimeMillis() + (durationMinutes * 60 * 1000L)
+                val syncManager = com.pulso.wear.data.sync.SyncManager.getInstance(context)
+                val current = syncManager.currentConfig.value
+                if (current != null) {
+                    val updatedStress = current.stressConfig.copy(snoozeUntil = until)
+                    syncManager.updateLocalConfig(current.copy(stressConfig = updatedStress))
+                }
+                val label = when (durationMinutes) {
+                    60L -> "1 hora"
+                    240L -> "4 horas"
+                    else -> "mañana"
+                }
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = "Avisos pausados por $label"
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = "Error al pausar: ${e.message}"
+                )
+            }
+        }
+    }
+
     companion object {
         fun provideFactory(
             getConnectedPhoneUseCase: GetConnectedPhoneUseCase,

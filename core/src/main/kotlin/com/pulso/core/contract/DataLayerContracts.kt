@@ -28,6 +28,12 @@ object DataLayerContracts {
     const val EVENTS_ACK_PATH = "/pulso/v1/events-ack"
     const val EVENTS_ACK_SCHEMA_VERSION = 1
 
+    const val FEEDBACK_PATH = "/pulso/v1/feedback"
+    const val FEEDBACK_SCHEMA_VERSION = 1
+
+    const val FEEDBACK_ACK_PATH = "/pulso/v1/feedback-ack"
+    const val FEEDBACK_ACK_SCHEMA_VERSION = 1
+
     object Source {
         const val WATCH = "watch"
         const val PHONE = "phone"

@@ -92,6 +92,10 @@ class SyncManager private constructor(private val context: Context) :
         }
     }
 
+    fun updateLocalConfig(config: ConfigSync) {
+        persistConfig(config)
+    }
+
     fun isCollectionEnabled(): Boolean = _currentConfig.value?.collectionEnabled == true
 
     fun getWindowMinutes(): Int = _currentConfig.value?.windowMinutes ?: 5
@@ -154,6 +158,64 @@ class SyncManager private constructor(private val context: Context) :
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to parse StressEventsAck message", e)
             }
+        } else if (messageEvent.path == DataLayerContracts.FEEDBACK_ACK_PATH) {
+            try {
+                val ack = com.pulso.core.intervention.FeedbackAck.fromByteArray(messageEvent.data)
+                Log.i(TAG, "Received FeedbackAck: eventId=${ack.eventId}, action=${ack.action}")
+                scope.launch {
+                    database.interventionFeedbackDao().markSynced(ack.eventId, ack.action.name)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to parse FeedbackAck message", e)
+            }
+        }
+    }
+
+    suspend fun sendInterventionFeedback(feedback: com.pulso.core.intervention.InterventionFeedback): Boolean = withContext(Dispatchers.IO) {
+        val connectedNodes = try {
+            Tasks.await(nodeClient.connectedNodes)
+        } catch (e: Exception) {
+            emptyList()
+        }
+        val phoneNode = connectedNodes.firstOrNull() ?: return@withContext false
+
+        try {
+            Tasks.await(
+                messageClient.sendMessage(
+                    phoneNode.id,
+                    DataLayerContracts.FEEDBACK_PATH,
+                    feedback.toByteArray()
+                )
+            )
+            Log.i(TAG, "Sent InterventionFeedback to ${phoneNode.displayName}: action=${feedback.action}, eventId=${feedback.eventId}")
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to send InterventionFeedback to phone: ${e.message}")
+            false
+        }
+    }
+
+    suspend fun sendWatchCommand(command: com.pulso.core.intervention.WatchCommand): Boolean = withContext(Dispatchers.IO) {
+        val connectedNodes = try {
+            Tasks.await(nodeClient.connectedNodes)
+        } catch (e: Exception) {
+            emptyList()
+        }
+        val phoneNode = connectedNodes.firstOrNull() ?: return@withContext false
+
+        try {
+            Tasks.await(
+                messageClient.sendMessage(
+                    phoneNode.id,
+                    DataLayerContracts.COMMANDS_PATH,
+                    command.toByteArray()
+                )
+            )
+            Log.i(TAG, "Sent WatchCommand to ${phoneNode.displayName}: type=${command.type}, eventId=${command.eventId}")
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to send WatchCommand to phone: ${e.message}")
+            false
         }
     }
 

@@ -290,6 +290,49 @@ class MobileSyncManager private constructor(private val context: Context) :
             DataLayerContracts.SAMPLES_PATH -> handleSamplesMessage(messageEvent)
             DataLayerContracts.STATUS_PATH -> handleStatusMessage(messageEvent)
             DataLayerContracts.EVENTS_PATH -> handleEventsMessage(messageEvent)
+            DataLayerContracts.FEEDBACK_PATH -> handleFeedbackMessage(messageEvent)
+            DataLayerContracts.COMMANDS_PATH -> handleWatchCommandsMessage(messageEvent)
+        }
+    }
+
+    private fun handleFeedbackMessage(messageEvent: MessageEvent) {
+        scope.launch {
+            try {
+                val feedback = com.pulso.core.intervention.InterventionFeedback.fromByteArray(messageEvent.data)
+                Log.i(TAG, "Received InterventionFeedback from watch: eventId=${feedback.eventId}, action=${feedback.action}")
+
+                // Acknowledge back to watch
+                val ack = com.pulso.core.intervention.FeedbackAck(
+                    eventId = feedback.eventId,
+                    action = feedback.action,
+                    receivedAt = System.currentTimeMillis()
+                )
+                Tasks.await(
+                    messageClient.sendMessage(
+                        messageEvent.sourceNodeId,
+                        DataLayerContracts.FEEDBACK_ACK_PATH,
+                        ack.toByteArray()
+                    )
+                )
+                Log.i(TAG, "Dispatched FeedbackAck to watch for event ${feedback.eventId}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to handle InterventionFeedback", e)
+            }
+        }
+    }
+
+    private fun handleWatchCommandsMessage(messageEvent: MessageEvent) {
+        scope.launch {
+            try {
+                val cmd = com.pulso.core.intervention.WatchCommand.fromByteArray(messageEvent.data)
+                Log.i(TAG, "Received WatchCommand from watch: type=${cmd.type}, eventId=${cmd.eventId}")
+                if (cmd.type == com.pulso.core.intervention.WatchCommand.TYPE_OPEN_CHAT) {
+                    // Chat command received from watch (Part 8/9 will surface active chat screen)
+                    Log.i(TAG, "Command OPEN_CHAT triggered from gentle intervention on watch for event ${cmd.eventId}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to handle WatchCommand", e)
+            }
         }
     }
 

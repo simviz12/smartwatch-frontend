@@ -409,3 +409,124 @@ This document specifies the messages and data items exchanged between the Wear O
   "additionalProperties": false
 }
 ```
+
+---
+
+## 9. /pulso/v1/feedback
+
+- **Type**: Message (`MessageClient`)
+- **Path**: `/pulso/v1/feedback`
+- **Schema Version**: `1`
+- **Sender**: Wear OS Watch (`"watch"`)
+- **Receiver**: Android Phone (`"phone"`)
+- **Delivery Guarantees**: Recorded user reaction or system timeout to gentle interventions.
+- **Idempotency**: Unique by `(eventId, action)`.
+- **Payload Format**: JSON (UTF-8 bytes)
+
+### JSON Schema
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InterventionFeedback",
+  "type": "object",
+  "required": ["schemaVersion", "eventId", "action", "timestamp"],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "eventId": {
+      "type": "string",
+      "description": "Identifier of the triggering StressEvent."
+    },
+    "action": {
+      "type": "string",
+      "enum": ["TALK", "BREATHE", "DISMISS", "NOT_STRESSED", "IGNORED"],
+      "description": "Outcome of the intervention."
+    },
+    "timeBucket": {
+      "type": ["string", "null"],
+      "description": "Time bucket during which feedback was collected (e.g. MORNING, AFTERNOON)."
+    },
+    "timestamp": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds."
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+---
+
+## 10. /pulso/v1/feedback-ack
+
+- **Type**: Message (`MessageClient`)
+- **Path**: `/pulso/v1/feedback-ack`
+- **Schema Version**: `1`
+- **Sender**: Android Phone (`"phone"`)
+- **Receiver**: Wear OS Watch (`"watch"`)
+- **Payload Format**: JSON (UTF-8 bytes)
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeedbackAck",
+  "type": "object",
+  "required": ["schemaVersion", "eventId", "action", "receivedAt"],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "eventId": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string"
+    },
+    "receivedAt": {
+      "type": "integer"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+---
+
+## 11. /pulso/v1/commands
+
+- **Type**: Message (`MessageClient`)
+- **Path**: `/pulso/v1/commands`
+- **Schema Version**: `1`
+- **Sender**: Wear OS Watch (`"watch"`)
+- **Receiver**: Android Phone (`"phone"`)
+- **Payload Format**: JSON (UTF-8 bytes)
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WatchCommand",
+  "type": "object",
+  "required": ["schemaVersion", "type", "timestamp"],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "type": {
+      "type": "string",
+      "enum": ["OPEN_CHAT"]
+    },
+    "eventId": {
+      "type": ["string", "null"]
+    },
+    "timestamp": {
+      "type": "integer"
+    }
+  },
+  "additionalProperties": false
+}
+```
