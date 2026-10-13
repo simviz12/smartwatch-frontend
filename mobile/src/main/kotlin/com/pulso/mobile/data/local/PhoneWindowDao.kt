@@ -36,7 +36,7 @@ interface PhoneWindowDao {
     suspend fun getWindowsBetween(startTimestamp: Long, endTimestamp: Long): List<PhoneWindowEntity>
 
     @Query("SELECT * FROM phone_measurement_windows ORDER BY windowStart ASC")
-    suspend fun getAllWindows(): List<PhoneWindowEntity>
+    fun getAllWindowsFlow(): Flow<List<PhoneWindowEntity>>
 
     @Query("DELETE FROM phone_measurement_windows")
     suspend fun clearAll()
