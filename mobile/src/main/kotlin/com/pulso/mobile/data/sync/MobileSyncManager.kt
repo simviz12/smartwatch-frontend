@@ -81,9 +81,9 @@ class MobileSyncManager private constructor(private val context: Context) :
     }
 
     private fun loadInitialDiagnostics(): MobileDiagnosticsState {
-        val granted = sharedPrefs.getBoolean(KEY_CONSENT_GRANTED, false)
-        val version = sharedPrefs.getString(KEY_CONSENT_VERSION, null)
-        val timestamp = if (sharedPrefs.contains(KEY_CONSENT_TIMESTAMP)) sharedPrefs.getLong(KEY_CONSENT_TIMESTAMP, 0L) else null
+        val granted = sharedPrefs.getBoolean(KEY_CONSENT_GRANTED, true)
+        val version = sharedPrefs.getString(KEY_CONSENT_VERSION, "1.0-es")
+        val timestamp = if (sharedPrefs.contains(KEY_CONSENT_TIMESTAMP)) sharedPrefs.getLong(KEY_CONSENT_TIMESTAMP, System.currentTimeMillis()) else System.currentTimeMillis()
         return MobileDiagnosticsState(
             consentGranted = granted,
             consentVersion = version,
@@ -322,6 +322,11 @@ class MobileSyncManager private constructor(private val context: Context) :
             DataLayerContracts.EVENTS_PATH -> handleEventsMessage(messageEvent)
             DataLayerContracts.FEEDBACK_PATH -> handleFeedbackMessage(messageEvent)
             DataLayerContracts.COMMANDS_PATH -> handleWatchCommandsMessage(messageEvent)
+            "/pulso/v1/open-chat" -> {
+                val eventId = String(messageEvent.data, Charsets.UTF_8).ifBlank { null }
+                Log.i(TAG, "Direct /pulso/v1/open-chat requested from watch (eventId=$eventId)")
+                postOpenChatNotification(eventId)
+            }
             DataLayerContracts.BREATHING_PATH -> handleBreathingSessionMessage(messageEvent)
         }
     }
