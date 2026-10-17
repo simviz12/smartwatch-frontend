@@ -226,6 +226,24 @@ fun MainScreen(
                 }
             }
 
+            // Hablar con IA (Acompañamiento emocional y conexión con teléfono)
+            item {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                Button(
+                    onClick = {
+                        viewModel.openChatOnPhone(context)
+                    },
+                    modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
+                    colors = ButtonDefaults.primaryButtonColors(backgroundColor = Color(0xFF10B981))
+                ) {
+                    Text(
+                        text = "🗣️ Hablar con IA",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
             // Consent Gate Display
             val isConsentGranted = uiState.config?.collectionEnabled == true
             if (!isConsentGranted) {
