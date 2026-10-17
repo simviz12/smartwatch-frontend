@@ -91,6 +91,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         checkAndRequestPermissions()
+        // Eagerly initialize speech engine on Wear OS so it is ready immediately
+        try {
+            com.pulso.wear.data.speech.WearSpeechManager.getInstance(applicationContext)
+        } catch (_: Exception) {}
 
         val route = intent.getStringExtra("route")
         var currentRoute by mutableStateOf(route)
@@ -231,6 +235,9 @@ fun MainScreen(
                 val context = androidx.compose.ui.platform.LocalContext.current
                 Button(
                     onClick = {
+                        try {
+                            com.pulso.wear.data.speech.WearSpeechManager.getInstance(context).speak("Estoy aquí contigo. Respira profundo.")
+                        } catch (_: Exception) {}
                         viewModel.openChatOnPhone(context)
                     },
                     modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
