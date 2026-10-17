@@ -3,6 +3,7 @@ package com.pulso.mobile.presentation.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,6 +78,7 @@ fun GeminiVoiceChatScreen(
             .padding(16.dp)
     ) {
         // Chat Header with status indicator
+        // Header status bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -88,7 +90,7 @@ fun GeminiVoiceChatScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(10.dp)
+                            .size(8.dp)
                             .clip(CircleShape)
                             .background(if (isSpeaking) theme.success else theme.primary)
                     )
@@ -96,13 +98,13 @@ fun GeminiVoiceChatScreen(
                     Text(
                         text = PulsoStrings.chatHeader(language),
                         fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = theme.textPrimary
                     )
                 }
                 Text(
-                    text = if (isSpeaking) "🔊 Hablando contigo..." else PulsoStrings.chatSubHeader(language),
-                    fontSize = 11.sp,
+                    text = if (isSpeaking) "Reproduciendo audio..." else PulsoStrings.chatSubHeader(language),
+                    fontSize = 12.sp,
                     color = theme.textSecondary
                 )
             }
@@ -110,11 +112,12 @@ fun GeminiVoiceChatScreen(
             if (isSpeaking) {
                 Button(
                     onClick = { chatManager.stopSpeaking() },
-                    colors = ButtonDefaults.buttonColors(containerColor = theme.border),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.height(32.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = theme.cardBackground),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, theme.border),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.height(30.dp)
                 ) {
-                    Text("Silenciar", fontSize = 11.sp, color = theme.textPrimary)
+                    Text("Pausar audio", fontSize = 11.sp, color = theme.textPrimary, fontWeight = FontWeight.Medium)
                 }
             }
         }
@@ -123,8 +126,8 @@ fun GeminiVoiceChatScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                .padding(bottom = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             QuickChip(
                 text = PulsoStrings.quickPrompt1(language),
@@ -205,8 +208,10 @@ fun GeminiVoiceChatScreen(
                     )
             ) {
                 Text(
-                    text = if (isListening) "🎙️" else "🎤",
-                    fontSize = 18.sp
+                    text = if (isListening) "STOP" else "VOZ",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isListening) Color.White else theme.primary
                 )
             }
 
@@ -250,7 +255,7 @@ fun GeminiVoiceChatScreen(
                 modifier = Modifier.size(48.dp),
                 enabled = inputText.isNotBlank() && !isGenerating
             ) {
-                Text("➤", fontSize = 16.sp, color = theme.onPrimary)
+                Text("ENVIAR", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = theme.onPrimary)
             }
         }
     }
@@ -299,11 +304,20 @@ fun MessageBubble(
                         color = if (isUser) Color.White else theme.primary
                     )
                     if (!isUser) {
-                        IconButton(
-                            onClick = onRepeatSpeak,
-                            modifier = Modifier.size(24.dp)
+                        Box(
+                            modifier = Modifier
+                                .padding(start = 4.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(theme.primary.copy(alpha = 0.15f))
+                                .clickable { onRepeatSpeak() }
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
-                            Text("🔊", fontSize = 12.sp)
+                            Text(
+                                "AUDIO",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = theme.primary
+                            )
                         }
                     }
                 }
