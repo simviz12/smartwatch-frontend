@@ -68,20 +68,34 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (intent?.getStringExtra("route") == "chat_placeholder") {
-            viewModel.selectTab(6)
-        }
+        handleChatIntent(intent)
         setContent {
-            MaterialTheme {
-                MainPhoneScreen(viewModel = viewModel)
-            }
+            MainPhoneScreen(
+                viewModel = viewModel,
+                chatManager = com.pulso.mobile.data.chat.PulsoGeminiChatManager.getInstance(this)
+            )
+        }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleChatIntent(intent)
+    }
+
+    private fun handleChatIntent(intent: android.content.Intent?) {
+        if (intent?.getStringExtra("route") == "chat_placeholder" || intent?.getStringExtra("route") == "chat") {
+            viewModel.selectTab(6)
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainPhoneScreen(viewModel: MobileViewModel) {
+fun MainPhoneScreen(
+    viewModel: MobileViewModel,
+    chatManager: com.pulso.mobile.data.chat.PulsoGeminiChatManager
+) {
     val uiState by viewModel.uiState.collectAsState()
     val diagnostics by viewModel.diagnosticsState.collectAsState()
     val todayWindows by viewModel.todayWindows.collectAsState()
@@ -91,63 +105,125 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
     val breathingSessions by viewModel.breathingSessions.collectAsState()
     val weeklyBreathingSummary by viewModel.weeklyBreathingSummary.collectAsState()
 
+    var isBlackAndWhite by remember { mutableStateOf(false) }
+    var currentLanguage by remember { mutableStateOf(com.pulso.mobile.presentation.i18n.AppLanguage.ES) }
+    val theme = remember(isBlackAndWhite) { com.pulso.mobile.presentation.theme.getPulsoTheme(isBlackAndWhite) }
+
     val showOnboarding = !diagnostics.consentGranted
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "PULSO",
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "PULSO",
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.sp,
+                            color = theme.primary
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(theme.cardBackground)
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "IA",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = theme.primary
+                            )
+                        }
+                    }
+                },
+                actions = {
+                    // English / Spanish Switch Button
+                    Button(
+                        onClick = {
+                            currentLanguage = if (currentLanguage == com.pulso.mobile.presentation.i18n.AppLanguage.ES) {
+                                com.pulso.mobile.presentation.i18n.AppLanguage.EN
+                            } else {
+                                com.pulso.mobile.presentation.i18n.AppLanguage.ES
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = theme.cardBackground),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text(
+                            text = if (currentLanguage == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "🌐 ES" else "🌐 EN",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = theme.primary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    // Black & White / Color Contrast Switch Button
+                    Button(
+                        onClick = { isBlackAndWhite = !isBlackAndWhite },
+                        colors = ButtonDefaults.buttonColors(containerColor = theme.cardBackground),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.height(32.dp).padding(end = 8.dp)
+                    ) {
+                        Text(
+                            text = if (isBlackAndWhite) "⚪ B/N" else "🎨 Color",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = theme.primary
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF0F172A),
-                    titleContentColor = Color(0xFF38BDF8)
+                    containerColor = theme.topBarBackground,
+                    titleContentColor = theme.primary
                 )
             )
         },
         bottomBar = {
             if (!showOnboarding) {
                 NavigationBar(
-                    containerColor = Color(0xFF0F172A)
+                    containerColor = theme.topBarBackground
                 ) {
                     NavigationBarItem(
                         selected = uiState.selectedTab == 0,
                         onClick = { viewModel.selectTab(0) },
-                        label = { Text("Hoy") },
+                        label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabToday(currentLanguage)) },
                         icon = { Text("📊") }
+                    )
+                    NavigationBarItem(
+                        selected = uiState.selectedTab == 6,
+                        onClick = { viewModel.selectTab(6) },
+                        label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabChat(currentLanguage)) },
+                        icon = { Text("🤖") }
                     )
                     NavigationBarItem(
                         selected = uiState.selectedTab == 4,
                         onClick = { viewModel.selectTab(4) },
-                        label = { Text("Eventos") },
+                        label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabEvents(currentLanguage)) },
                         icon = { Text("⚡") }
                     )
                     NavigationBarItem(
                         selected = uiState.selectedTab == 7,
                         onClick = { viewModel.selectTab(7) },
-                        label = { Text("Respirar") },
+                        label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabBreathe(currentLanguage)) },
                         icon = { Text("🫁") }
                     )
                     NavigationBarItem(
                         selected = uiState.selectedTab == 8,
                         onClick = { viewModel.selectTab(8) },
-                        label = { Text("Mapa") },
+                        label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabMap(currentLanguage)) },
                         icon = { Text("🗺️") }
-                    )
-                    NavigationBarItem(
-                        selected = uiState.selectedTab == 1,
-                        onClick = { viewModel.selectTab(1) },
-                        label = { Text("Diagnóstico") },
-                        icon = { Text("🩺") }
                     )
                     NavigationBarItem(
                         selected = uiState.selectedTab == 2,
                         onClick = { viewModel.selectTab(2) },
-                        label = { Text("Ajustes") },
+                        label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabSettings(currentLanguage)) },
                         icon = { Text("⚙️") }
                     )
                 }
@@ -158,7 +234,7 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            color = Color(0xFF020617)
+            color = theme.background
         ) {
             when {
                 showOnboarding -> {
@@ -240,7 +316,10 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
                     )
                 }
                 uiState.selectedTab == 6 -> {
-                    ChatPlaceholderScreen(
+                    com.pulso.mobile.presentation.components.GeminiVoiceChatScreen(
+                        chatManager = chatManager,
+                        language = currentLanguage,
+                        theme = theme,
                         onBack = { viewModel.selectTab(0) }
                     )
                 }
@@ -274,7 +353,7 @@ fun MainPhoneScreen(viewModel: MobileViewModel) {
 
 @Composable
 fun OnboardingScreen(onAcceptConsent: () -> Unit) {
-    var isChecked by remember { mutableStateOf(false) }
+    var isChecked by remember { mutableStateOf(true) }
 
     Column(
         modifier = Modifier
