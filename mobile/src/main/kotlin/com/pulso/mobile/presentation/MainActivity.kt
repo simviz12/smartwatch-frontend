@@ -155,7 +155,7 @@ fun MainPhoneScreen(
                         modifier = Modifier.height(32.dp)
                     ) {
                         Text(
-                            text = if (currentLanguage == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "🌐 ES" else "🌐 EN",
+                            text = if (currentLanguage == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "ES" else "EN",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = theme.primary
@@ -172,7 +172,7 @@ fun MainPhoneScreen(
                         modifier = Modifier.height(32.dp).padding(end = 8.dp)
                     ) {
                         Text(
-                            text = if (isBlackAndWhite) "⚪ B/N" else "🎨 Color",
+                            text = if (isBlackAndWhite) "B/N" else "Color",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = theme.primary
@@ -194,37 +194,37 @@ fun MainPhoneScreen(
                         selected = uiState.selectedTab == 0,
                         onClick = { viewModel.selectTab(0) },
                         label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabToday(currentLanguage)) },
-                        icon = { Text("📊") }
+                        icon = { Text("HOY", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (uiState.selectedTab == 0) theme.primary else theme.textSecondary) }
                     )
                     NavigationBarItem(
                         selected = uiState.selectedTab == 6,
                         onClick = { viewModel.selectTab(6) },
                         label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabChat(currentLanguage)) },
-                        icon = { Text("🤖") }
+                        icon = { Text("IA", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (uiState.selectedTab == 6) theme.primary else theme.textSecondary) }
                     )
                     NavigationBarItem(
                         selected = uiState.selectedTab == 4,
                         onClick = { viewModel.selectTab(4) },
                         label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabEvents(currentLanguage)) },
-                        icon = { Text("⚡") }
+                        icon = { Text("EVT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (uiState.selectedTab == 4) theme.primary else theme.textSecondary) }
                     )
                     NavigationBarItem(
                         selected = uiState.selectedTab == 7,
                         onClick = { viewModel.selectTab(7) },
                         label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabBreathe(currentLanguage)) },
-                        icon = { Text("🫁") }
+                        icon = { Text("RESP", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (uiState.selectedTab == 7) theme.primary else theme.textSecondary) }
                     )
                     NavigationBarItem(
                         selected = uiState.selectedTab == 8,
                         onClick = { viewModel.selectTab(8) },
                         label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabMap(currentLanguage)) },
-                        icon = { Text("🗺️") }
+                        icon = { Text("MAPA", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (uiState.selectedTab == 8) theme.primary else theme.textSecondary) }
                     )
                     NavigationBarItem(
                         selected = uiState.selectedTab == 2,
                         onClick = { viewModel.selectTab(2) },
                         label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabSettings(currentLanguage)) },
-                        icon = { Text("⚙️") }
+                        icon = { Text("AJUST", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (uiState.selectedTab == 2) theme.primary else theme.textSecondary) }
                     )
                 }
             }
@@ -626,7 +626,7 @@ fun DiagnosticoScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
-                    Text("⚠️ Discrepancia de Línea Base", fontWeight = FontWeight.Bold, color = Color(0xFFEF4444), fontSize = 14.sp)
+                    Text("ALERTA: Discrepancia de Línea Base", fontWeight = FontWeight.Bold, color = Color(0xFFEF4444), fontSize = 14.sp)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(mismatchText, color = Color(0xFFFCA5A5), fontSize = 12.sp)
                 }
@@ -870,7 +870,19 @@ fun ChatPlaceholderScreen(onBack: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("💬", fontSize = 48.sp)
+        Surface(
+            color = Color(0xFF1E293B),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.padding(bottom = 16.dp)
+        ) {
+            Text(
+                "PULSO ASISTENTE",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF38BDF8),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+        }
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             "Espacio de Acompañamiento",
