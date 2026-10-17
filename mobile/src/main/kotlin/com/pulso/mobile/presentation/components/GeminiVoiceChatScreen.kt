@@ -251,11 +251,12 @@ fun GeminiVoiceChatScreen(
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = theme.primary),
-                shape = CircleShape,
-                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(16.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier.height(48.dp),
                 enabled = inputText.isNotBlank() && !isGenerating
             ) {
-                Text("ENVIAR", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = theme.onPrimary)
+                Text("ENVIAR", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = theme.onPrimary)
             }
         }
     }
@@ -344,13 +345,14 @@ fun QuickChip(
             .clip(RoundedCornerShape(12.dp))
             .background(theme.cardBackground)
             .border(1.dp, theme.border, RoundedCornerShape(12.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
             fontSize = 11.sp,
-            color = theme.textSecondary,
+            color = theme.textPrimary,
             maxLines = 1
         )
     }
