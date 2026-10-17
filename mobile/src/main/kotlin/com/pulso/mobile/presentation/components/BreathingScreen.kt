@@ -237,7 +237,7 @@ fun BreathingScreen(
             if (isTestingOnWatch) {
                 CircularProgressIndicator(strokeWidth = 2.dp, color = Color.White, modifier = Modifier.size(20.dp))
             } else {
-                Text("🫁 Probar en el reloj", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("Iniciar en Smartwatch", fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -295,9 +295,9 @@ fun BreathingScreen(
                                 color = if (session.endedBy == "COMPLETED") Color(0xFF4ADE80) else Color(0xFFFBBF24)
                             )
                             val feelingText = when (session.feeling) {
-                                "BETTER" -> "😊 Mejor"
-                                "SAME" -> "😐 Igual"
-                                "WORSE" -> "😞 Peor"
+                                "BETTER" -> "Mejor"
+                                "SAME" -> "Igual"
+                                "WORSE" -> "Peor"
                                 else -> "Sin reporte"
                             }
                             Text(feelingText, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF38BDF8))
@@ -307,7 +307,7 @@ fun BreathingScreen(
                             Spacer(modifier = Modifier.height(4.dp))
                             val hrB = session.hrBefore?.let { "${it.toInt()} BPM" } ?: "--"
                             val hrA = session.hrAfter?.let { "${it.toInt()} BPM" } ?: "--"
-                            Text("Pulso: antes $hrB ➔ después $hrA", fontSize = 11.sp, color = Color.LightGray)
+                            Text("Pulso: antes $hrB -> despues $hrA", fontSize = 11.sp, color = Color.LightGray)
                         }
                     }
                 }
