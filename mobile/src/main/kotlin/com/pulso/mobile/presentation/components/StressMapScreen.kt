@@ -123,7 +123,6 @@ fun StressMapScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(text = "🌱", fontSize = 36.sp)
                     Text(
                         text = "Aún no hay suficientes datos",
                         color = Color.White,
@@ -150,12 +149,11 @@ fun StressMapScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "💡 ", fontSize = 16.sp)
                         Text(
-                            text = "Observación de tus patrones",
+                            text = "OBSERVACIÓN DE PATRONES",
                             color = Color(0xFF38BDF8),
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
                         )
                     }
                     Text(
@@ -321,7 +319,6 @@ fun StressMapScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "🛠️ ", fontSize = 14.sp)
                     Text(
                         text = "HERRAMIENTA DEBUG — Simulador de Densidad",
                         color = Color(0xFFF59E0B),

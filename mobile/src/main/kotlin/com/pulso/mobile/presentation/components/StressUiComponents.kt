@@ -95,7 +95,7 @@ fun SensitivitySettingsSection(
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(
-                            text = "💡 Sugerencia de sensibilidad adaptativa",
+                            text = "SUGERENCIA: Sensibilidad adaptativa",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFA5B4FC)
@@ -393,7 +393,7 @@ fun SensitivitySettingsSection(
                 modifier = Modifier.fillMaxWidth().height(40.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4338CA))
             ) {
-                Text("🔬 Abrir Laboratorio de Simulación (Replay)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("Laboratorio de Simulación (Replay)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -508,12 +508,12 @@ fun StressEventCard(
 
             // User Feedback Status Row
             val feedbackLabel = when (entity.userFeedback) {
-                "NOT_STRESSED" -> "❌ Marcado como: No estaba estresado"
-                "TALK" -> "💬 Marcado como: Quería hablar"
-                "BREATHE" -> "🫁 Marcado como: Respirar"
-                "DISMISS" -> "⏳ Marcado como: Ahora no"
-                "IGNORED" -> "⚪ Descartado automáticamente (sin respuesta)"
-                "REVISED_STRESSED" -> "✅ Rectificado: En realidad sí estaba estresado"
+                "NOT_STRESSED" -> "Marcado: No estaba estresado"
+                "TALK" -> "Marcado: Quería hablar"
+                "BREATHE" -> "Marcado: Respirar"
+                "DISMISS" -> "Marcado: Ahora no"
+                "IGNORED" -> "Descartado automáticamente"
+                "REVISED_STRESSED" -> "Rectificado: Sí estaba estresado"
                 else -> "Sin respuesta registrada aún"
             }
             Text(
@@ -535,7 +535,7 @@ fun StressEventCard(
                     modifier = Modifier.height(30.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF334155))
                 ) {
-                    Text("✏️ En realidad sí estaba estresado", fontSize = 10.sp, color = Color(0xFF38BDF8))
+                    Text("Rectificar: En realidad sí estaba estresado", fontSize = 10.sp, color = Color(0xFF38BDF8))
                 }
             }
 
