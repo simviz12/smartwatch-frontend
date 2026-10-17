@@ -219,7 +219,7 @@ fun MainScreen(
                     colors = ButtonDefaults.primaryButtonColors(backgroundColor = Color(0xFF0284C7))
                 ) {
                     Text(
-                        text = "🫁 Respiración guiada",
+                        text = "Respiración Guiada",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -237,7 +237,7 @@ fun MainScreen(
                     colors = ButtonDefaults.primaryButtonColors(backgroundColor = Color(0xFF10B981))
                 ) {
                     Text(
-                        text = "🗣️ Hablar con IA",
+                        text = "Hablar con Asistente",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )

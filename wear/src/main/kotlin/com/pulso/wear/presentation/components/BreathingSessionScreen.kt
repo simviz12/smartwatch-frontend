@@ -349,7 +349,7 @@ fun BreathingSetupScreen(
                 .padding(horizontal = 8.dp, vertical = 3.dp)
         ) {
             Text(
-                text = if (displayMode == BreathingDisplayMode.VIBRATION_ONLY) "📳 Solo vibración" else "👁️ Con guía visual",
+                text = if (displayMode == BreathingDisplayMode.VIBRATION_ONLY) "Modo: Solo vibración" else "Modo: Con guía visual",
                 fontSize = 9.sp,
                 color = Color(0xFFE2E8F0)
             )
