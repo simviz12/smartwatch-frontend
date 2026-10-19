@@ -11,13 +11,18 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -194,296 +199,336 @@ fun MainScreen(
         ScalingLazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colors.background)
-                .padding(horizontal = 8.dp),
+                .background(Color(0xFF0A0F14))
+                .padding(horizontal = 12.dp),
             state = listState,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header
+            // Header Minimalista
             item {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 18.dp, bottom = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
                         text = "PULSO",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colors.primary,
-                        letterSpacing = 2.sp
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFF2DD4BF),
+                        letterSpacing = 3.sp
                     )
-                }
-            }
-
-            // Ejercicio de Respiración
-            item {
-                Button(
-                    onClick = onOpenBreathing,
-                    modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
-                    colors = ButtonDefaults.primaryButtonColors(backgroundColor = Color(0xFF0284C7))
-                ) {
                     Text(
-                        text = "Respiración Guiada",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
+                        text = "ACOMPAÑAMIENTO EN VIVO",
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF64748B),
+                        letterSpacing = 1.sp
                     )
                 }
             }
 
-            // Hablar con IA (Acompañamiento emocional y conexión con teléfono)
+            // TARJETA DE ACCIÓN 1: Respiración Adaptativa (Clínica)
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF0F2332))
+                        .clickable { onOpenBreathing() }
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "RESPIRACIÓN",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF38BDF8),
+                                letterSpacing = 1.sp
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Calma Guiada",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFF1F5F9)
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF0284C7))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "INICIAR",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Espaciador suave
+            item { Spacer(modifier = Modifier.height(4.dp)) }
+
+            // TARJETA DE ACCIÓN 2: Asistente Psicológico por Voz
             item {
                 val context = androidx.compose.ui.platform.LocalContext.current
-                Button(
-                    onClick = {
-                        try {
-                            com.pulso.wear.data.speech.WearSpeechManager.getInstance(context).speak("Estoy aquí contigo. Respira profundo.")
-                        } catch (_: Exception) {}
-                        viewModel.openChatOnPhone(context)
-                    },
-                    modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
-                    colors = ButtonDefaults.primaryButtonColors(backgroundColor = Color(0xFF10B981))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF062D24))
+                        .clickable {
+                            try {
+                                com.pulso.wear.data.speech.WearSpeechManager.getInstance(context).speak("Estoy aquí contigo. Respira profundo.")
+                            } catch (_: Exception) {}
+                            viewModel.openChatOnPhone(context)
+                        }
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
                 ) {
-                    Text(
-                        text = "Hablar con Asistente",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "ASISTENCIA",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF34D399),
+                                letterSpacing = 1.sp
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Hablar con Terapeuta",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFF1F5F9)
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF059669))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "VOZ",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White
+                            )
+                        }
+                    }
                 }
             }
 
-            // Consent Gate Display
+            // Espaciador suave
+            item { Spacer(modifier = Modifier.height(4.dp)) }
+
+            // Consent Gate o Monitor Biométrico en Tiempo Real
             val isConsentGranted = uiState.config?.collectionEnabled == true
             if (!isConsentGranted) {
                 item {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF263238))
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color(0xFF1E1B18))
                             .padding(12.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "Consentimiento requerido",
-                                fontSize = 12.sp,
+                                text = "VINCULACIÓN PENDIENTE",
+                                fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFFFFB74D),
-                                textAlign = TextAlign.Center
+                                color = Color(0xFFFBBF24),
+                                letterSpacing = 1.sp
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(3.dp))
                             Text(
-                                text = "Abre Pulso en tu celular para empezar",
-                                fontSize = 11.sp,
-                                color = Color.White,
+                                text = "Activa los sensores en tu celular",
+                                fontSize = 10.sp,
+                                color = Color(0xFFE2E8F0),
                                 textAlign = TextAlign.Center
                             )
                         }
                     }
                 }
             } else {
-                // Live HR Box (Only when consent is granted)
+                // Tarjeta Biométrica Elegante
                 item {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF1A1A1A))
-                            .padding(10.dp),
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF131C24))
+                            .padding(12.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "FRECUENCIA CARDÍACA",
-                                fontSize = 10.sp,
+                                text = "RITMO CARDÍACO",
+                                fontSize = 8.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFFB0BEC5)
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            val bpmText = uiState.liveHeartRate.bpm?.let { "${it.toInt()} BPM" } ?: "-- BPM"
-                            Text(
-                                text = bpmText,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (uiState.liveHeartRate.bpm != null) Color(0xFF00E676) else Color.White
+                                color = Color(0xFF64748B),
+                                letterSpacing = 1.sp
                             )
                             Spacer(modifier = Modifier.height(2.dp))
+                            val bpmText = uiState.liveHeartRate.bpm?.let { "${it.toInt()}" } ?: "--"
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text(
+                                    text = bpmText,
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = if (uiState.liveHeartRate.bpm != null) Color(0xFF34D399) else Color(0xFF94A3B8)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "BPM",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF64748B),
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                            }
                             Text(
-                                text = "Estado: ${uiState.liveHeartRate.availability}",
-                                fontSize = 10.sp,
-                                color = Color(0xFF90A4AE)
+                                text = "Sensor: ${uiState.liveHeartRate.availability}",
+                                fontSize = 9.sp,
+                                color = Color(0xFF475569)
                             )
                         }
                     }
                 }
 
-                // Sync action button
+                // Sincronización biométrica rápida
                 item {
-                    Button(
-                        onClick = { viewModel.triggerSync() },
-                        enabled = !uiState.isSyncing,
-                        modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
-                        colors = ButtonDefaults.primaryButtonColors()
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF1B2733))
+                            .clickable(enabled = !uiState.isSyncing) { viewModel.triggerSync() }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         if (uiState.isSyncing) {
-                            CircularProgressIndicator(strokeWidth = 2.dp)
+                            CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
                         } else {
                             Text(
-                                text = "Sincronizar (${uiState.totalWindowsLogged})",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
+                                text = "Sincronizar datos (${uiState.totalWindowsLogged})",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF94A3B8)
                             )
                         }
                     }
                 }
             }
 
-            // Diagnostics and Export Tools
+            // Pausar Alertas (Snooze Clínico)
             item {
-                Button(
-                    onClick = onCopyReport,
-                    modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
-                    colors = ButtonDefaults.secondaryButtonColors()
-                ) {
-                    Text(
-                        text = "Copiar Informe",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-
-            item {
-                Button(
-                    onClick = { viewModel.exportCsv() },
-                    modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
-                    colors = ButtonDefaults.secondaryButtonColors()
-                ) {
-                    Text(
-                        text = "Exportar CSV (Debug)",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-
-            if (com.pulso.wear.BuildConfig.DEBUG) {
-                item {
-                    val context = androidx.compose.ui.platform.LocalContext.current
-                    Button(
-                        onClick = { viewModel.simulateStress(context) },
-                        modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
-                        colors = ButtonDefaults.secondaryButtonColors()
-                    ) {
-                        Text(
-                            text = "Simular estrés (Debug)",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-            }
-
-            // Pausar avisos (Snooze)
-            item {
+                Spacer(modifier = Modifier.height(4.dp))
                 val context = androidx.compose.ui.platform.LocalContext.current
                 var showSnoozeOptions by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Button(
-                        onClick = { showSnoozeOptions = !showSnoozeOptions },
-                        modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
-                        colors = ButtonDefaults.secondaryButtonColors()
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF1B2733))
+                            .clickable { showSnoozeOptions = !showSnoozeOptions }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (showSnoozeOptions) "Ocultar pausa" else "Pausar avisos",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
+                            text = if (showSnoozeOptions) "Cerrar pausa" else "Pausar notificaciones",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF94A3B8)
                         )
                     }
+
                     if (showSnoozeOptions) {
                         Spacer(modifier = Modifier.height(4.dp))
                         androidx.compose.foundation.layout.Row(
-                            modifier = Modifier.fillMaxWidth(0.9f),
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)
                         ) {
-                            Button(
-                                onClick = {
-                                    viewModel.snoozeAlerts(60L, context)
-                                    showSnoozeOptions = false
-                                },
-                                modifier = Modifier.weight(1f).height(32.dp),
-                                colors = ButtonDefaults.primaryButtonColors()
-                            ) {
-                                Text("1h", fontSize = 10.sp)
-                            }
-                            Button(
-                                onClick = {
-                                    viewModel.snoozeAlerts(240L, context)
-                                    showSnoozeOptions = false
-                                },
-                                modifier = Modifier.weight(1f).height(32.dp),
-                                colors = ButtonDefaults.primaryButtonColors()
-                            ) {
-                                Text("4h", fontSize = 10.sp)
-                            }
-                            Button(
-                                onClick = {
-                                    // Hasta mañana (~12h)
-                                    viewModel.snoozeAlerts(720L, context)
-                                    showSnoozeOptions = false
-                                },
-                                modifier = Modifier.weight(1f).height(32.dp),
-                                colors = ButtonDefaults.primaryButtonColors()
-                            ) {
-                                Text("Mañana", fontSize = 9.sp)
+                            listOf(60L to "1h", 240L to "4h", 720L to "12h").forEach { (min, label) ->
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color(0xFF263544))
+                                        .clickable {
+                                            viewModel.snoozeAlerts(min, context)
+                                            showSnoozeOptions = false
+                                        }
+                                        .padding(vertical = 6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
                             }
                         }
                     }
                 }
             }
 
-            // Send Ping to Companion Button
+            // Diagnósticos & Herramientas avanzadas
             item {
-                Button(
-                    onClick = { viewModel.sendPing() },
-                    enabled = !uiState.isSendingPing,
-                    modifier = Modifier.fillMaxWidth(0.9f).height(40.dp).padding(vertical = 2.dp),
-                    colors = ButtonDefaults.secondaryButtonColors()
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF161F28))
+                        .clickable { onCopyReport() }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    if (uiState.isSendingPing) {
-                        CircularProgressIndicator(strokeWidth = 2.dp)
-                    } else {
-                        Text(
-                            text = "Enviar al celular",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                    Text(
+                        text = "Informe de sensores",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF64748B)
+                    )
                 }
             }
 
-            // Status message
+            // Feedback / Mensajes de estado
             item {
                 uiState.statusMessage?.let { msg ->
                     Text(
                         text = msg,
-                        fontSize = 10.sp,
-                        color = Color(0xFF80CBC4),
+                        fontSize = 9.sp,
+                        color = Color(0xFF2DD4BF),
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
                     )
                 }
-                uiState.lastPingResultText?.let { pingMsg ->
-                    val isSuccess = pingMsg.startsWith("Enviado")
-                    Text(
-                        text = pingMsg,
-                        fontSize = 10.sp,
-                        color = if (isSuccess) Color(0xFF00E676) else Color(0xFFFF5252),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Espaciador final para dar holgura al scroll redondo
+            item {
+                Spacer(modifier = Modifier.height(20.dp))
             }
         }
     }

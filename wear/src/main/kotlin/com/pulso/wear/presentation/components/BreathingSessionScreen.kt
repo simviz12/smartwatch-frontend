@@ -157,26 +157,49 @@ fun VibrationOnlyScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Very subtle, dim indicator so user knows it's active if they peek
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF131C24))
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = "MODO HÁPTICO SILENCIOSO",
+                fontSize = 8.sp,
+                color = Color(0xFF64748B),
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
+            )
+        }
+        Spacer(modifier = Modifier.height(10.dp))
         Text(
-            text = "Solo vibración",
-            fontSize = 11.sp,
-            color = Color(0xFF475569),
-            fontWeight = FontWeight.SemiBold
+            text = "Cierra los ojos",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFF1F5F9)
         )
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(3.dp))
         Text(
-            text = "Cierra los ojos y sigue el ritmo",
+            text = "Sigue la vibración en tu muñeca",
             fontSize = 10.sp,
-            color = Color(0xFF334155),
+            color = Color(0xFF94A3B8),
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(14.dp))
-        Text(
-            text = "Toca para detener",
-            fontSize = 9.sp,
-            color = Color(0xFF1E293B)
-        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFF1E293B))
+                .clickable { onStop() }
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = "Terminar",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFFE2E8F0)
+            )
+        }
     }
 }
 
@@ -190,33 +213,33 @@ fun VisualGuideScreen(
 
     val targetScale = when (segmentType) {
         TimelineSegmentType.START_TAP -> 1.0f
-        TimelineSegmentType.INHALE -> 0.4f + (progress * 0.6f) // Expands to 1.0
-        TimelineSegmentType.HOLD_AFTER_INHALE -> 1.0f          // Stays expanded
-        TimelineSegmentType.EXHALE -> 1.0f - (progress * 0.6f) // Contracts to 0.4
-        TimelineSegmentType.HOLD_AFTER_EXHALE -> 0.4f          // Stays contracted
+        TimelineSegmentType.INHALE -> 0.45f + (progress * 0.55f) // Expands to 1.0
+        TimelineSegmentType.HOLD_AFTER_INHALE -> 1.0f            // Stays expanded
+        TimelineSegmentType.EXHALE -> 1.0f - (progress * 0.55f) // Contracts to 0.45
+        TimelineSegmentType.HOLD_AFTER_EXHALE -> 0.45f          // Stays contracted
         TimelineSegmentType.END_DOUBLE_TAP -> 0.7f
     }
 
     val animatedScale by animateFloatAsState(
         targetValue = targetScale,
-        animationSpec = tween(durationMillis = 100, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing),
         label = "circleScale"
     )
 
     val labelText = when (segmentType) {
-        TimelineSegmentType.START_TAP -> "Comenzando..."
-        TimelineSegmentType.INHALE -> "Inhala"
-        TimelineSegmentType.HOLD_AFTER_INHALE -> "Sostén"
-        TimelineSegmentType.EXHALE -> "Exhala"
-        TimelineSegmentType.HOLD_AFTER_EXHALE -> "Pausa"
-        TimelineSegmentType.END_DOUBLE_TAP -> "Completado"
+        TimelineSegmentType.START_TAP -> "PREPÁRATE"
+        TimelineSegmentType.INHALE -> "INHALA"
+        TimelineSegmentType.HOLD_AFTER_INHALE -> "SOSTÉN"
+        TimelineSegmentType.EXHALE -> "EXHALA"
+        TimelineSegmentType.HOLD_AFTER_EXHALE -> "PAUSA"
+        TimelineSegmentType.END_DOUBLE_TAP -> "COMPLETO"
     }
 
-    val labelColor = when (segmentType) {
+    val glowColor = when (segmentType) {
         TimelineSegmentType.INHALE -> Color(0xFF38BDF8)
         TimelineSegmentType.HOLD_AFTER_INHALE, TimelineSegmentType.HOLD_AFTER_EXHALE -> Color(0xFFFBBF24)
         TimelineSegmentType.EXHALE -> Color(0xFF34D399)
-        else -> Color.White
+        else -> Color(0xFF2DD4BF)
     }
 
     Column(
@@ -225,46 +248,58 @@ fun VisualGuideScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Box(
-            modifier = Modifier.size(110.dp),
+            modifier = Modifier.size(130.dp),
             contentAlignment = Alignment.Center
         ) {
-            // Animated breathing circle
+            // Anillo exterior suave
             Box(
                 modifier = Modifier
-                    .size((110 * animatedScale).dp)
+                    .size((130 * animatedScale).dp)
                     .clip(CircleShape)
-                    .background(labelColor.copy(alpha = 0.25f))
+                    .background(glowColor.copy(alpha = 0.12f))
             )
+            // Anillo intermedio
             Box(
                 modifier = Modifier
-                    .size((90 * animatedScale).dp)
+                    .size((105 * animatedScale).dp)
                     .clip(CircleShape)
-                    .background(labelColor.copy(alpha = 0.45f))
+                    .background(glowColor.copy(alpha = 0.25f))
             )
-            Text(
-                text = labelText,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+            // Núcleo central
+            Box(
+                modifier = Modifier
+                    .size((80 * animatedScale).dp)
+                    .clip(CircleShape)
+                    .background(glowColor.copy(alpha = 0.40f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = labelText,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White,
+                    letterSpacing = 1.sp
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Progress info
+        // Info de ciclos
         val currentCycle = snapshot?.currentCycle ?: 1
         val totalCycles = snapshot?.totalCycles ?: 1
         Text(
             text = "Ciclo $currentCycle de $totalCycles",
-            fontSize = 11.sp,
-            color = Color(0xFF94A3B8)
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFF64748B)
         )
 
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = "Toca para detener",
             fontSize = 9.sp,
-            color = Color(0xFF64748B)
+            color = Color(0xFF475569)
         )
     }
 }
@@ -284,88 +319,112 @@ fun BreathingSetupScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
+            .background(Color(0xFF0A0F14))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Respiración", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8))
+        Text(
+            text = "RESPIRACIÓN",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Black,
+            color = Color(0xFF2DD4BF),
+            letterSpacing = 2.sp
+        )
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Plan toggle row
+        // Selector de Protocolo Clínico
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            listOf("Calma 4-6", "Cuadrada", "4-7-8").forEach { name ->
-                val fullPlanName = when (name) {
-                    "Cuadrada" -> "Cuadrada 4-4-4-4"
-                    "4-7-8" -> "Relajante 4-7-8"
-                    else -> "Calma 4-6"
-                }
-                val isSelected = selectedPlan == fullPlanName
+            listOf("Calma 4-6" to "Calma 4-6", "Cuadrada" to "Cuadrada 4-4-4-4", "4-7-8" to "Relajante 4-7-8").forEach { (label, fullName) ->
+                val isSelected = selectedPlan == fullName
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isSelected) Color(0xFF0284C7) else Color(0xFF1E293B))
-                        .clickable { onSelectPlan(fullPlanName) }
-                        .padding(horizontal = 6.dp, vertical = 4.dp)
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isSelected) Color(0xFF0284C7) else Color(0xFF131C24))
+                        .clickable { onSelectPlan(fullName) }
+                        .padding(vertical = 6.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(name, fontSize = 9.sp, color = Color.White, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                    Text(
+                        text = label,
+                        fontSize = 9.sp,
+                        color = if (isSelected) Color.White else Color(0xFF94A3B8),
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                    )
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Duration row (1, 2, 5 min)
+        // Selector de Duración (1m, 2m, 5m)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             listOf(1, 2, 5).forEach { mins ->
                 val isSelected = selectedMinutes == mins
                 Box(
                     modifier = Modifier
-                        .padding(horizontal = 4.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isSelected) Color(0xFF0D9488) else Color(0xFF1E293B))
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isSelected) Color(0xFF0D9488) else Color(0xFF131C24))
                         .clickable { onSelectMinutes(mins) }
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .padding(vertical = 4.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text("${mins}m", fontSize = 10.sp, color = Color.White, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                    Text(
+                        text = "${mins} min",
+                        fontSize = 9.sp,
+                        color = if (isSelected) Color.White else Color(0xFF94A3B8),
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Display mode pill
+        // Alternador de Modo (Guía Visual / Háptico Silencioso)
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(6.dp))
-                .background(Color(0xFF334155))
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF1E293B))
                 .clickable { onToggleDisplayMode() }
-                .padding(horizontal = 8.dp, vertical = 3.dp)
+                .padding(horizontal = 10.dp, vertical = 4.dp)
         ) {
             Text(
                 text = if (displayMode == BreathingDisplayMode.VIBRATION_ONLY) "Modo: Solo vibración" else "Modo: Con guía visual",
                 fontSize = 9.sp,
-                color = Color(0xFFE2E8F0)
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFFCBD5E1)
             )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Start button
-        Button(
-            onClick = onStart,
+        // Botón Iniciar
+        Box(
             modifier = Modifier
-                .fillMaxWidth(0.85f)
-                .height(34.dp),
-            colors = ButtonDefaults.primaryButtonColors(backgroundColor = Color(0xFF0284C7))
+                .fillMaxWidth(0.9f)
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color(0xFF0284C7))
+                .clickable { onStart() }
+                .padding(vertical = 8.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Text("Empezar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = "INICIAR SESIÓN",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White,
+                letterSpacing = 1.sp
+            )
         }
     }
 }
@@ -381,61 +440,85 @@ fun FeelingEvaluationScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color(0xFF0A0F14))
             .padding(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("¿Cómo te sientes ahora?", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center)
+        Text(
+            text = "¿CÓMO TE SIENTES?",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF2DD4BF),
+            letterSpacing = 2.sp
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = "Evaluación post-crisis",
+            fontSize = 9.sp,
+            color = Color(0xFF64748B)
+        )
 
         if (liveHr != null) {
-            Spacer(modifier = Modifier.height(2.dp))
-            Text("Pulso: ${liveHr.toInt()} BPM", fontSize = 10.sp, color = Color(0xFF38BDF8))
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Pulso: ${liveHr.toInt()} BPM",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF34D399)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 3 Opciones de Bienestar
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFF059669))
+                    .clickable { onSelectFeeling("BETTER") }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Mejor", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFF334155))
+                    .clickable { onSelectFeeling("SAME") }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Igual", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFFE11D48))
+                    .clickable { onSelectFeeling("WORSE") }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Peor", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Button(
-                onClick = { onSelectFeeling("BETTER") },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(36.dp)
-                    .padding(horizontal = 2.dp),
-                colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF059669))
-            ) {
-                Text("Mejor", fontSize = 10.sp, color = Color.White)
-            }
-            Button(
-                onClick = { onSelectFeeling("SAME") },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(36.dp)
-                    .padding(horizontal = 2.dp),
-                colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF475569))
-            ) {
-                Text("Igual", fontSize = 10.sp, color = Color.White)
-            }
-            Button(
-                onClick = { onSelectFeeling("WORSE") },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(36.dp)
-                    .padding(horizontal = 2.dp),
-                colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFDC2626))
-            ) {
-                Text("Peor", fontSize = 10.sp, color = Color.White)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(6.dp))
-
         Text(
             text = "Omitir",
             fontSize = 10.sp,
-            color = Color.Gray,
+            color = Color(0xFF64748B),
             modifier = Modifier.clickable { onSkip() }
         )
     }
