@@ -2,30 +2,30 @@ package com.pulso.mobile.presentation.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Light/Modern Palette (Calm & Premium)
-val PulsoSlate950 = Color(0xFF020617)
-val PulsoSlate900 = Color(0xFF0F172A)
-val PulsoSlate800 = Color(0xFF1E293B)
-val PulsoSlate700 = Color(0xFF334155)
-val PulsoSlate400 = Color(0xFF94A3B8)
-val PulsoSlate200 = Color(0xFFE2E8F0)
-val PulsoSky500 = Color(0xFF0EA5E9)
-val PulsoSky400 = Color(0xFF38BDF8)
-val PulsoEmerald500 = Color(0xFF10B981)
-val PulsoEmerald400 = Color(0xFF34D399)
-val PulsoRose500 = Color(0xFFF43F5E)
-val PulsoAmber400 = Color(0xFFFBBF24)
+// Light / Clean Modern Palette (Soft & Premium)
+val LightBg = Color(0xFFF8FAFC)
+val LightSurface = Color(0xFFFFFFFF)
+val LightCard = Color(0xFFFFFFFF)
+val LightTopBar = Color(0xFFFFFFFF)
+val LightPrimary = Color(0xFF0284C7)
+val LightAccent = Color(0xFF0EA5E9)
+val LightTextPrimary = Color(0xFF0F172A)
+val LightTextSecondary = Color(0xFF64748B)
+val LightBorder = Color(0xFFE2E8F0)
 
-// High-Contrast Monochrome / B&W Palette
-val BWBlack = Color(0xFF000000)
-val BWDenseGray = Color(0xFF18181B)
-val BWCard = Color(0xFF27272A)
-val BWBorder = Color(0xFF52525B)
-val BWTextMuted = Color(0xFFA1A1AA)
-val BWWhite = Color(0xFFFFFFFF)
+// Dark / Clinical Modern Palette (Restful Deep Ocean)
+val DarkBg = Color(0xFF070B10)
+val DarkSurface = Color(0xFF0F172A)
+val DarkCard = Color(0xFF131D2D)
+val DarkTopBar = Color(0xFF0B1320)
+val DarkPrimary = Color(0xFF38BDF8)
+val DarkAccent = Color(0xFF0284C7)
+val DarkTextPrimary = Color(0xFFF8FAFC)
+val DarkTextSecondary = Color(0xFF94A3B8)
+val DarkBorder = Color(0xFF1E293B)
 
 data class PulsoThemeColors(
-    val isBlackAndWhite: Boolean,
+    val isLightMode: Boolean,
     val background: Color,
     val surface: Color,
     val cardBackground: Color,
@@ -41,40 +41,40 @@ data class PulsoThemeColors(
     val error: Color
 )
 
-fun getPulsoTheme(isBlackAndWhite: Boolean): PulsoThemeColors {
-    return if (isBlackAndWhite) {
+fun getPulsoTheme(isLightMode: Boolean): PulsoThemeColors {
+    return if (isLightMode) {
         PulsoThemeColors(
-            isBlackAndWhite = true,
-            background = BWBlack,
-            surface = BWDenseGray,
-            cardBackground = BWCard,
-            topBarBackground = BWBlack,
-            primary = BWWhite,
-            onPrimary = BWBlack,
-            accent = BWWhite,
-            textPrimary = BWWhite,
-            textSecondary = BWTextMuted,
-            border = BWBorder,
-            success = BWWhite,
-            warning = BWWhite,
-            error = BWWhite
+            isLightMode = true,
+            background = LightBg,
+            surface = LightSurface,
+            cardBackground = LightCard,
+            topBarBackground = LightTopBar,
+            primary = LightPrimary,
+            onPrimary = Color.White,
+            accent = LightAccent,
+            textPrimary = LightTextPrimary,
+            textSecondary = LightTextSecondary,
+            border = LightBorder,
+            success = Color(0xFF10B981),
+            warning = Color(0xFFF59E0B),
+            error = Color(0xFFEF4444)
         )
     } else {
         PulsoThemeColors(
-            isBlackAndWhite = false,
-            background = PulsoSlate950,
-            surface = PulsoSlate900,
-            cardBackground = PulsoSlate800,
-            topBarBackground = PulsoSlate900,
-            primary = PulsoSky400,
-            onPrimary = PulsoSlate950,
-            accent = PulsoSky500,
-            textPrimary = Color.White,
-            textSecondary = PulsoSlate400,
-            border = PulsoSlate700,
-            success = PulsoEmerald400,
-            warning = PulsoAmber400,
-            error = PulsoRose500
+            isLightMode = false,
+            background = DarkBg,
+            surface = DarkSurface,
+            cardBackground = DarkCard,
+            topBarBackground = DarkTopBar,
+            primary = DarkPrimary,
+            onPrimary = Color(0xFF020617),
+            accent = DarkAccent,
+            textPrimary = DarkTextPrimary,
+            textSecondary = DarkTextSecondary,
+            border = DarkBorder,
+            success = Color(0xFF34D399),
+            warning = Color(0xFFFBBF24),
+            error = Color(0xFFFB7185)
         )
     }
 }

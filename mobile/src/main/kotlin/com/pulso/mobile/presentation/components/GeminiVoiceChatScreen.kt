@@ -286,7 +286,7 @@ fun MessageBubble(
                 ),
             colors = CardDefaults.cardColors(
                 containerColor = if (isUser) {
-                    if (theme.isBlackAndWhite) Color(0xFF27272A) else Color(0xFF0369A1)
+                    if (theme.isLightMode) Color(0xFF0284C7) else Color(0xFF0369A1)
                 } else {
                     theme.cardBackground
                 }

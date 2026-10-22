@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -105,9 +106,9 @@ fun MainPhoneScreen(
     val breathingSessions by viewModel.breathingSessions.collectAsState()
     val weeklyBreathingSummary by viewModel.weeklyBreathingSummary.collectAsState()
 
-    var isBlackAndWhite by remember { mutableStateOf(false) }
+    var isLightMode by remember { mutableStateOf(false) }
     var currentLanguage by remember { mutableStateOf(com.pulso.mobile.presentation.i18n.AppLanguage.ES) }
-    val theme = remember(isBlackAndWhite) { com.pulso.mobile.presentation.theme.getPulsoTheme(isBlackAndWhite) }
+    val theme = remember(isLightMode) { com.pulso.mobile.presentation.theme.getPulsoTheme(isLightMode) }
 
     val showOnboarding = !diagnostics.consentGranted
 
@@ -164,15 +165,15 @@ fun MainPhoneScreen(
 
                     Spacer(modifier = Modifier.width(6.dp))
 
-                    // Black & White / Color Contrast Switch Button
+                    // Light / Dark Theme Switch Button
                     Button(
-                        onClick = { isBlackAndWhite = !isBlackAndWhite },
+                        onClick = { isLightMode = !isLightMode },
                         colors = ButtonDefaults.buttonColors(containerColor = theme.cardBackground),
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.height(32.dp).padding(end = 8.dp)
                     ) {
                         Text(
-                            text = if (isBlackAndWhite) "B/N" else "Color",
+                            text = if (isLightMode) com.pulso.mobile.presentation.i18n.PulsoStrings.themeLight(currentLanguage) else com.pulso.mobile.presentation.i18n.PulsoStrings.themeDark(currentLanguage),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = theme.primary
@@ -238,7 +239,11 @@ fun MainPhoneScreen(
         ) {
             when {
                 showOnboarding -> {
-                    OnboardingScreen(onAcceptConsent = { viewModel.grantConsent() })
+                    OnboardingScreen(
+                        theme = theme,
+                        language = currentLanguage,
+                        onAcceptConsent = { viewModel.grantConsent() }
+                    )
                 }
                 uiState.selectedTab == 0 -> {
                     HoyScreen(
@@ -246,6 +251,8 @@ fun MainPhoneScreen(
                         latestWindow = latestWindow,
                         baseline = phoneBaseline,
                         breathingSessionTimes = breathingSessions.map { it.completedAt },
+                        theme = theme,
+                        language = currentLanguage,
                         onNavigateToBaseline = { viewModel.selectTab(3) }
                     )
                 }
@@ -255,6 +262,8 @@ fun MainPhoneScreen(
                         baselineMismatch = baselineMismatch,
                         isTestingPing = uiState.isTestingPing,
                         pingFeedback = uiState.pingFeedback,
+                        theme = theme,
+                        language = currentLanguage,
                         onTestConnection = { viewModel.testWatchConnection() }
                     )
                 }
@@ -268,6 +277,8 @@ fun MainPhoneScreen(
                         isSavingConfig = uiState.isSavingConfig,
                         configSaveFeedback = uiState.configSaveFeedback,
                         qualityMetrics = qualityMetrics,
+                        theme = theme,
+                        language = currentLanguage,
                         onPresetSelected = { viewModel.onPresetSelected(it) },
                         onUpdateThresholds = { hrZ, hrvZ, hrOnlyZ, a, b, cd, cap ->
                             viewModel.onUpdateThresholds(hrZ, hrvZ, hrOnlyZ, a, b, cd, cap)
@@ -352,53 +363,69 @@ fun MainPhoneScreen(
 }
 
 @Composable
-fun OnboardingScreen(onAcceptConsent: () -> Unit) {
+fun OnboardingScreen(
+    theme: com.pulso.mobile.presentation.theme.PulsoThemeColors,
+    language: com.pulso.mobile.presentation.i18n.AppLanguage,
+    onAcceptConsent: () -> Unit
+) {
     var isChecked by remember { mutableStateOf(true) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(theme.background)
             .padding(24.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Bienvenido a Pulso",
+            text = if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "Bienvenido a Pulso" else "Welcome to Pulso",
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF38BDF8)
+            color = theme.primary
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "Tu acompañante de bienestar y autorregulación emocional.",
+            text = if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES)
+                "Tu acompañante de bienestar y autorregulación emocional."
+                else "Your companion for emotional regulation and wellness.",
             fontSize = 14.sp,
-            color = Color.White,
+            color = theme.textPrimary,
             textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-            modifier = Modifier.fillMaxWidth()
+            colors = CardDefaults.cardColors(containerColor = theme.cardBackground),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, theme.border, RoundedCornerShape(12.dp))
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Aviso de Bienestar y Privacidad",
+                    text = if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "Aviso de Bienestar y Privacidad" else "Wellness & Privacy Notice",
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFFBBF24),
+                    color = theme.warning,
                     fontSize = 15.sp
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "• Pulso es una herramienta de bienestar, NO un dispositivo médico.\n" +
-                            "• Mide periódicamente tu pulso cardíaco para detectar patrones de tensión.\n" +
-                            "• Tus datos biométricos permanecen exclusivamente en tus dispositivos (reloj y celular).\n" +
-                            "• No vendemos ni compartimos tus datos de salud con terceros.\n" +
-                            "• En versiones futuras se incorporará un chat de apoyo emocional con consentimiento específico.",
+                    text = if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES)
+                        "• Pulso es una herramienta de bienestar, NO un dispositivo médico.\n" +
+                        "• Mide periódicamente tu pulso cardíaco para detectar patrones de tensión.\n" +
+                        "• Tus datos biométricos permanecen exclusivamente en tus dispositivos (reloj y celular).\n" +
+                        "• No vendemos ni compartimos tus datos de salud con terceros.\n" +
+                        "• Asistente conversacional con IA para acompañarte en momentos de estrés."
+                        else
+                        "• Pulso is a wellness tool, NOT a medical device.\n" +
+                        "• Periodically analyzes pulse to detect patterns of tension.\n" +
+                        "• Biometric data remains strictly on your local devices.\n" +
+                        "• We never sell or share your data with third parties.\n" +
+                        "• AI emotional companion ready to support you when stressed.",
                     fontSize = 13.sp,
-                    color = Color(0xFFE2E8F0),
+                    color = theme.textSecondary,
                     lineHeight = 20.sp
                 )
             }
@@ -416,9 +443,11 @@ fun OnboardingScreen(onAcceptConsent: () -> Unit) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "He leído y acepto la recolección y análisis local de mis datos de pulso.",
+                text = if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES)
+                    "He leído y acepto la recolección y análisis local de mis datos de pulso."
+                    else "I have read and accept local analysis of my pulse data.",
                 fontSize = 12.sp,
-                color = Color.White
+                color = theme.textPrimary
             )
         }
 
@@ -427,10 +456,17 @@ fun OnboardingScreen(onAcceptConsent: () -> Unit) {
         Button(
             onClick = onAcceptConsent,
             enabled = isChecked,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7))
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = theme.primary)
         ) {
-            Text("Empezar a usar Pulso", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "Empezar a usar Pulso" else "Start using Pulso",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = theme.onPrimary
+            )
         }
     }
 }
@@ -441,6 +477,8 @@ fun HoyScreen(
     latestWindow: MeasurementWindow?,
     baseline: com.pulso.core.baseline.Baseline?,
     breathingSessionTimes: List<Long> = emptyList(),
+    theme: com.pulso.mobile.presentation.theme.PulsoThemeColors,
+    language: com.pulso.mobile.presentation.i18n.AppLanguage,
     onNavigateToBaseline: () -> Unit
 ) {
     // Resolve current bucket for baseline overlay
@@ -465,6 +503,7 @@ fun HoyScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(theme.background)
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
@@ -474,72 +513,87 @@ fun HoyScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Resumen de Hoy",
+                text = com.pulso.mobile.presentation.i18n.PulsoStrings.todayTitle(language),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = theme.textPrimary
             )
             Button(
                 onClick = onNavigateToBaseline,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                modifier = Modifier.height(34.dp)
+                colors = ButtonDefaults.buttonColors(containerColor = theme.cardBackground),
+                modifier = Modifier
+                    .height(34.dp)
+                    .border(1.dp, theme.border, RoundedCornerShape(12.dp))
             ) {
-                Text("Tu línea base ›", fontSize = 12.sp, color = Color(0xFF38BDF8))
+                Text(
+                    text = com.pulso.mobile.presentation.i18n.PulsoStrings.yourBaseline(language),
+                    fontSize = 12.sp,
+                    color = theme.primary
+                )
             }
         }
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         // Cards Row
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // HR Card
             Card(
-                modifier = Modifier.weight(1f),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B))
+                modifier = Modifier
+                    .weight(1f)
+                    .border(1.dp, theme.border, RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(containerColor = theme.cardBackground)
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text("Último Pulso", fontSize = 11.sp, color = Color.Gray)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    val hrText = latestWindow?.let { "${it.meanHr.toInt()} BPM" } ?: "Sin datos"
-                    Text(hrText, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4ADE80))
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(com.pulso.mobile.presentation.i18n.PulsoStrings.latestPulse(language), fontSize = 12.sp, color = theme.textSecondary)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    val hrText = latestWindow?.let { "${it.meanHr.toInt()} BPM" } ?: com.pulso.mobile.presentation.i18n.PulsoStrings.noData(language)
+                    Text(hrText, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = theme.success)
                 }
             }
 
             // HRV Card
             Card(
-                modifier = Modifier.weight(1f),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B))
+                modifier = Modifier
+                    .weight(1f)
+                    .border(1.dp, theme.border, RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(containerColor = theme.cardBackground)
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text("Variabilidad (HRV)", fontSize = 11.sp, color = Color.Gray)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    val hrvText = latestWindow?.rmssd?.let { "${it.toInt()} ms" } ?: "Sin datos"
-                    Text(hrvText, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8))
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(com.pulso.mobile.presentation.i18n.PulsoStrings.hrvRmssd(language), fontSize = 12.sp, color = theme.textSecondary)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    val hrvText = latestWindow?.rmssd?.let { "${it.toInt()} ms" } ?: com.pulso.mobile.presentation.i18n.PulsoStrings.noData(language)
+                    Text(hrvText, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = theme.primary)
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         // Windows recorded card
         Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B))
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, theme.border, RoundedCornerShape(12.dp)),
+            colors = CardDefaults.cardColors(containerColor = theme.cardBackground)
         ) {
             Row(
-                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                modifier = Modifier
+                    .padding(14.dp)
+                    .fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("Mediciones hoy", fontSize = 11.sp, color = Color.Gray)
-                    Text("${windows.size} ventanas", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                    Text(com.pulso.mobile.presentation.i18n.PulsoStrings.measurementsToday(language), fontSize = 12.sp, color = theme.textSecondary)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(com.pulso.mobile.presentation.i18n.PulsoStrings.windowsCount(language, windows.size), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = theme.textPrimary)
                 }
                 latestWindow?.let {
                     val minutesAgo = ((System.currentTimeMillis() - it.windowEnd) / 60000).coerceAtLeast(0)
-                    Text("Hace $minutesAgo min", fontSize = 12.sp, color = Color(0xFFFBBF24))
+                    Text(com.pulso.mobile.presentation.i18n.PulsoStrings.minutesAgo(language, minutesAgo), fontSize = 12.sp, color = theme.warning)
                 }
             }
         }
@@ -552,12 +606,12 @@ fun HoyScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Frecuencia Cardíaca (BPM)", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+            Text(com.pulso.mobile.presentation.i18n.PulsoStrings.hrTrendTitle(language), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = theme.textPrimary)
             if (hrBaselineRange != null) {
                 Text(
-                    "Franja: ${hrBaselineRange.first.toInt()}-${hrBaselineRange.second.toInt()} BPM",
+                    com.pulso.mobile.presentation.i18n.PulsoStrings.rangeLabel(language, hrBaselineRange.first.toInt(), hrBaselineRange.second.toInt(), "BPM"),
                     fontSize = 11.sp,
-                    color = Color(0xFF4ADE80)
+                    color = theme.success
                 )
             }
         }
@@ -565,11 +619,16 @@ fun HoyScreen(
         SimpleMetricLineChart(
             windows = windows,
             valueExtractor = { it.meanHr },
-            lineColor = Color(0xFF4ADE80),
-            emptyMessage = "Sin datos suficientes para graficar hoy",
+            lineColor = theme.success,
+            emptyMessage = com.pulso.mobile.presentation.i18n.PulsoStrings.emptyHrMessage(language),
             baselineRange = hrBaselineRange,
             breathingSessionTimes = breathingSessionTimes,
-            modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFF1E293B))
+            textColor = theme.textSecondary,
+            gridColor = theme.border,
+            modifier = Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(theme.cardBackground)
+                .border(1.dp, theme.border, RoundedCornerShape(10.dp))
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -580,12 +639,12 @@ fun HoyScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Variabilidad RMSSD (ms)", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+            Text(com.pulso.mobile.presentation.i18n.PulsoStrings.hrvTrendTitle(language), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = theme.textPrimary)
             if (hrvBaselineRange != null) {
                 Text(
-                    "Franja: ${hrvBaselineRange.first.toInt()}-${hrvBaselineRange.second.toInt()} ms",
+                    com.pulso.mobile.presentation.i18n.PulsoStrings.rangeLabel(language, hrvBaselineRange.first.toInt(), hrvBaselineRange.second.toInt(), "ms"),
                     fontSize = 11.sp,
-                    color = Color(0xFF38BDF8)
+                    color = theme.primary
                 )
             }
         }
@@ -593,11 +652,16 @@ fun HoyScreen(
         SimpleMetricLineChart(
             windows = windows,
             valueExtractor = { it.rmssd },
-            lineColor = Color(0xFF38BDF8),
-            emptyMessage = "HRV no disponible en este reloj o sin muestras IBI",
+            lineColor = theme.primary,
+            emptyMessage = com.pulso.mobile.presentation.i18n.PulsoStrings.emptyHrvMessage(language),
             baselineRange = hrvBaselineRange,
             breathingSessionTimes = breathingSessionTimes,
-            modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFF1E293B))
+            textColor = theme.textSecondary,
+            gridColor = theme.border,
+            modifier = Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(theme.cardBackground)
+                .border(1.dp, theme.border, RoundedCornerShape(10.dp))
         )
     }
 }
@@ -608,113 +672,105 @@ fun DiagnosticoScreen(
     baselineMismatch: String?,
     isTestingPing: Boolean,
     pingFeedback: String?,
+    theme: com.pulso.mobile.presentation.theme.PulsoThemeColors,
+    language: com.pulso.mobile.presentation.i18n.AppLanguage,
     onTestConnection: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(theme.background)
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Text("Diagnóstico de Pulso", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(com.pulso.mobile.presentation.i18n.PulsoStrings.diagnosticsTitle(language), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = theme.textPrimary)
         Spacer(modifier = Modifier.height(16.dp))
 
         // Mismatch Alert if detected
         baselineMismatch?.let { mismatchText ->
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF450A0A)),
-                modifier = Modifier.fillMaxWidth()
+                colors = CardDefaults.cardColors(containerColor = theme.error.copy(alpha = 0.15f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, theme.error, RoundedCornerShape(12.dp))
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
-                    Text("ALERTA: Discrepancia de Línea Base", fontWeight = FontWeight.Bold, color = Color(0xFFEF4444), fontSize = 14.sp)
+                    Text(
+                        if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "ALERTA: Discrepancia de Línea Base" else "ALERT: Baseline Discrepancy",
+                        fontWeight = FontWeight.Bold,
+                        color = theme.error,
+                        fontSize = 14.sp
+                    )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(mismatchText, color = Color(0xFFFCA5A5), fontSize = 12.sp)
+                    Text(mismatchText, color = theme.textPrimary, fontSize = 12.sp)
                 }
             }
             Spacer(modifier = Modifier.height(10.dp))
         }
 
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)), modifier = Modifier.fillMaxWidth()) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = theme.cardBackground),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, theme.border, RoundedCornerShape(12.dp))
+        ) {
             Column(modifier = Modifier.padding(14.dp)) {
-                Text("Consentimiento", fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), fontSize = 14.sp)
+                Text(com.pulso.mobile.presentation.i18n.PulsoStrings.consentCardTitle(language), fontWeight = FontWeight.Bold, color = theme.primary, fontSize = 14.sp)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("• Estado: ${if (diagnostics.consentGranted) "Aceptado" else "No otorgado"}", color = Color.White, fontSize = 13.sp)
-                Text("• Versión: ${diagnostics.consentVersion ?: "N/A"}", color = Color.LightGray, fontSize = 12.sp)
-                diagnostics.consentTimestamp?.let {
-                    Text("• Fecha: ${Date(it)}", color = Color.LightGray, fontSize = 12.sp)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)), modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text("Conexión con el Reloj", fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("• Conectado: ${if (diagnostics.watchConnected) "SÍ (${diagnostics.connectedWatchNodeName})" else "NO"}", color = Color.White, fontSize = 13.sp)
-                diagnostics.lastWatchStatus?.let { status ->
-                    Text("• Batería del reloj: ${status.batteryPct}%", color = Color.White, fontSize = 13.sp)
-                    Text("• Servicio de medición: ${if (status.serviceRunning) "Activo" else "Detenido"}", color = Color.White, fontSize = 13.sp)
-                    Text("• Modelo reloj: ${status.watchModel}", color = Color.LightGray, fontSize = 12.sp)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)), modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text("Almacenamiento y Sincronización", fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("• Ventanas almacenadas en celular: ${diagnostics.totalWindowsStored}", color = Color.White, fontSize = 13.sp)
-                Text("• Último lote recibido: ${diagnostics.lastSyncBatchId ?: "Ninguno"}", color = Color.LightGray, fontSize = 12.sp)
-                Text("• Muestras aceptadas último lote: ${diagnostics.lastSyncAcceptedCount}", color = Color.LightGray, fontSize = 12.sp)
-                diagnostics.lastError?.let { err ->
-                    Text("• Último error: $err", color = Color(0xFFEF4444), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)), modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text("Detección y Eventos", fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("• Total eventos almacenados: ${diagnostics.totalEventsStored}", color = Color.White, fontSize = 13.sp)
-                diagnostics.lastEventReceived?.let { ev ->
-                    val timeStr = Date(ev.time).toString()
-                    Text("• Último evento: $timeStr (Confianza: ${(ev.confidence * 100).toInt()}%)", color = Color(0xFFFBBF24), fontSize = 12.sp)
-                } ?: Text("• Último evento: Ninguno registrado aún", color = Color.LightGray, fontSize = 12.sp)
-                diagnostics.lastFeedbackReceived?.let { fb ->
-                    val timeStr = Date(fb.timestamp).toString()
-                    Text("• Última retroalimentación: ${fb.action.name} en ${fb.timeBucket} ($timeStr)", color = Color(0xFF38BDF8), fontSize = 12.sp)
-                } ?: Text("• Última retroalimentación: Ninguna registrada aún", color = Color.LightGray, fontSize = 12.sp)
-                diagnostics.activeSnoozeUntil?.let { snoozeUntil ->
-                    val diffMin = ((snoozeUntil - System.currentTimeMillis()) / 60000).coerceAtLeast(0)
-                    Text("• Pausa de avisos activa: $diffMin min restantes", color = Color(0xFFF59E0B), fontSize = 12.sp)
-                }
-                Text("• Versión config en celular: v${diagnostics.phoneConfigVersion}", color = Color.LightGray, fontSize = 12.sp)
-                Text("• Versión config en reloj: v${diagnostics.watchConfigVersion}", color = Color.LightGray, fontSize = 12.sp)
-                if (diagnostics.hasPendingConfig) {
-                    Text("• Sincronización de config: PENDIENTE (esperando confirmación del reloj)", color = Color(0xFFFBBF24), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                val statusText = if (diagnostics.consentGranted) {
+                    if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "Aceptado" else "Granted"
                 } else {
-                    Text("• Sincronización de config: AL DÍA", color = Color(0xFF4ADE80), fontSize = 12.sp)
+                    if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "No otorgado" else "Revoked"
+                }
+                Text("• Estado: $statusText", color = theme.textPrimary, fontSize = 13.sp)
+                Text("• Versión: ${diagnostics.consentVersion ?: "N/A"}", color = theme.textSecondary, fontSize = 12.sp)
+                diagnostics.consentTimestamp?.let {
+                    Text("• Fecha: ${Date(it)}", color = theme.textSecondary, fontSize = 12.sp)
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)), modifier = Modifier.fillMaxWidth()) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = theme.cardBackground),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, theme.border, RoundedCornerShape(12.dp))
+        ) {
             Column(modifier = Modifier.padding(14.dp)) {
-                Text("Respiración y Capacidad Háptica", fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), fontSize = 14.sp)
+                Text(com.pulso.mobile.presentation.i18n.PulsoStrings.watchConnectionTitle(language), fontWeight = FontWeight.Bold, color = theme.primary, fontSize = 14.sp)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("• Capacidad háptica reloj: ${diagnostics.watchHapticCapability ?: "No reportada todavía"}", color = Color.White, fontSize = 12.sp)
-                Text("• Total sesiones registradas: ${diagnostics.totalBreathingSessionsStored}", color = Color.White, fontSize = 12.sp)
-                diagnostics.lastBreathingSession?.let { session ->
-                    val dateStr = Date(session.completedAt).toString()
-                    Text("• Última sesión: ${session.planName} (${session.completedCycles}/${session.targetCycles} ciclos, $dateStr)", color = Color(0xFF4ADE80), fontSize = 12.sp)
-                } ?: Text("• Última sesión: Ninguna registrada aún", color = Color.LightGray, fontSize = 12.sp)
+                val connStatus = if (diagnostics.watchConnected) {
+                    if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "SÍ (${diagnostics.connectedWatchNodeName})" else "YES (${diagnostics.connectedWatchNodeName})"
+                } else {
+                    if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "NO" else "NO"
+                }
+                Text("• Conectado: $connStatus", color = theme.textPrimary, fontSize = 13.sp)
+                diagnostics.lastWatchStatus?.let { status ->
+                    Text("• Batería: ${status.batteryPct}%", color = theme.textPrimary, fontSize = 13.sp)
+                    Text("• Servicio: ${if (status.serviceRunning) "Activo" else "Detenido"}", color = theme.textPrimary, fontSize = 13.sp)
+                    Text("• Modelo: ${status.watchModel}", color = theme.textSecondary, fontSize = 12.sp)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = theme.cardBackground),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, theme.border, RoundedCornerShape(12.dp))
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text(com.pulso.mobile.presentation.i18n.PulsoStrings.storageSyncTitle(language), fontWeight = FontWeight.Bold, color = theme.primary, fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("• Ventanas: ${diagnostics.totalWindowsStored}", color = theme.textPrimary, fontSize = 13.sp)
+                Text("• Lote: ${diagnostics.lastSyncBatchId ?: "Ninguno"}", color = theme.textSecondary, fontSize = 12.sp)
+                diagnostics.lastError?.let { err ->
+                    Text("• Error: $err", color = theme.error, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
             }
         }
 
@@ -723,19 +779,26 @@ fun DiagnosticoScreen(
         Button(
             onClick = onTestConnection,
             enabled = !isTestingPing,
-            modifier = Modifier.fillMaxWidth().height(44.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7))
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(44.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = theme.primary)
         ) {
             if (isTestingPing) {
-                CircularProgressIndicator(strokeWidth = 2.dp, color = Color.White)
+                CircularProgressIndicator(strokeWidth = 2.dp, color = theme.onPrimary)
             } else {
-                Text("Probar conexión con el reloj", fontSize = 13.sp)
+                Text(com.pulso.mobile.presentation.i18n.PulsoStrings.testWatchConnection(language), fontSize = 13.sp, color = theme.onPrimary)
             }
         }
 
         pingFeedback?.let {
             Spacer(modifier = Modifier.height(8.dp))
-            Text(it, color = if (it.contains("exitoso")) Color(0xFF4ADE80) else Color(0xFFEF4444), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            Text(
+                it,
+                color = if (it.contains("exitoso") || it.contains("success")) theme.success else theme.error,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
@@ -749,6 +812,8 @@ fun AjustesScreen(
     isSavingConfig: Boolean,
     configSaveFeedback: String?,
     qualityMetrics: com.pulso.mobile.domain.intervention.QualityMetrics,
+    theme: com.pulso.mobile.presentation.theme.PulsoThemeColors,
+    language: com.pulso.mobile.presentation.i18n.AppLanguage,
     onPresetSelected: (com.pulso.mobile.domain.stress.SensitivityPreset) -> Unit,
     onUpdateThresholds: (hrZ: Double, hrvZ: Double, hrOnlyZ: Double, consecA: Int, consecB: Int, cooldown: Int, dailyCap: Int) -> Unit,
     onUpdateQuietHours: (startH: Int, startM: Int, endH: Int, endM: Int) -> Unit,
@@ -765,10 +830,11 @@ fun AjustesScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(theme.background)
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Text("Ajustes y Parámetros", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(com.pulso.mobile.presentation.i18n.PulsoStrings.settingsTitle(language), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = theme.textPrimary)
         Spacer(modifier = Modifier.height(14.dp))
 
         // Sensitivity Section
@@ -794,24 +860,28 @@ fun AjustesScreen(
         Spacer(modifier = Modifier.height(14.dp))
 
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-            modifier = Modifier.fillMaxWidth()
+            colors = CardDefaults.cardColors(containerColor = theme.cardBackground),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, theme.border, RoundedCornerShape(12.dp))
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
-                Text("Respiración Guiada Háptica", fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), fontSize = 14.sp)
+                Text(com.pulso.mobile.presentation.i18n.PulsoStrings.breathingHapticTitle(language), fontWeight = FontWeight.Bold, color = theme.primary, fontSize = 14.sp)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    "Configura patrones de respiración (Calma 4-6, Cuadrada, etc.), duración, intensidad y prueba sesiones en el reloj.",
+                    com.pulso.mobile.presentation.i18n.PulsoStrings.breathingHapticDesc(language),
                     fontSize = 12.sp,
-                    color = Color.LightGray
+                    color = theme.textSecondary
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Button(
                     onClick = onOpenBreathing,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D9488)),
-                    modifier = Modifier.fillMaxWidth().height(40.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = theme.accent),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp)
                 ) {
-                    Text("Configurar y ver historial de respiración ›", fontSize = 13.sp)
+                    Text(com.pulso.mobile.presentation.i18n.PulsoStrings.configureBreathing(language), fontSize = 13.sp, color = Color.White)
                 }
             }
         }
@@ -819,24 +889,28 @@ fun AjustesScreen(
         Spacer(modifier = Modifier.height(14.dp))
 
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-            modifier = Modifier.fillMaxWidth()
+            colors = CardDefaults.cardColors(containerColor = theme.cardBackground),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, theme.border, RoundedCornerShape(12.dp))
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
-                Text("Línea Base Personal", fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), fontSize = 14.sp)
+                Text(com.pulso.mobile.presentation.i18n.PulsoStrings.baselineCardTitle(language), fontWeight = FontWeight.Bold, color = theme.primary, fontSize = 14.sp)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    "Consulta el aprendizaje de tus rangos normales de pulso y variabilidad para cada horario del día.",
+                    com.pulso.mobile.presentation.i18n.PulsoStrings.baselineCardDesc(language),
                     fontSize = 12.sp,
-                    color = Color.LightGray
+                    color = theme.textSecondary
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Button(
                     onClick = onNavigateToBaseline,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
-                    modifier = Modifier.fillMaxWidth().height(40.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = theme.primary),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp)
                 ) {
-                    Text("Ver mi línea base", fontSize = 13.sp)
+                    Text(com.pulso.mobile.presentation.i18n.PulsoStrings.viewMyBaseline(language), fontSize = 13.sp, color = theme.onPrimary)
                 }
             }
         }
@@ -844,19 +918,21 @@ fun AjustesScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            "Al retirar tu consentimiento, el reloj inteligente detendrá inmediatamente cualquier monitoreo y recolección de pulso.",
+            com.pulso.mobile.presentation.i18n.PulsoStrings.revokeConsentWarning(language),
             fontSize = 13.sp,
-            color = Color.LightGray
+            color = theme.textSecondary
         )
 
         Spacer(modifier = Modifier.height(14.dp))
 
         Button(
             onClick = onRevokeConsent,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
-            modifier = Modifier.fillMaxWidth().height(48.dp)
+            colors = ButtonDefaults.buttonColors(containerColor = theme.error),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
         ) {
-            Text("Retirar consentimiento de medición", fontWeight = FontWeight.Bold)
+            Text(com.pulso.mobile.presentation.i18n.PulsoStrings.revokeConsent(language), fontWeight = FontWeight.Bold, color = Color.White)
         }
     }
 }

@@ -1,16 +1,17 @@
-package com.pulso.mobile.presentation
+﻿package com.pulso.mobile.presentation
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -24,13 +25,17 @@ fun SimpleMetricLineChart(
     valueExtractor: (MeasurementWindow) -> Double?,
     lineColor: Color,
     emptyMessage: String,
-    baselineRange: Pair<Double, Double>? = null, // (min, max) typical resting range
-    breathingSessionTimes: List<Long> = emptyList(), // Timestamps of breathing sessions for markers
+    baselineRange: Pair<Double, Double>? = null,
+    breathingSessionTimes: List<Long> = emptyList(),
+    textColor: Color = Color.Gray,
+    gridColor: Color = Color.LightGray.copy(alpha = 0.25f),
     modifier: Modifier = Modifier
 ) {
-    val validPoints = windows.mapNotNull { w ->
-        val v = valueExtractor(w)
-        if (v != null) Pair(w.windowStart, v) else null
+    val validPoints = remember(windows, valueExtractor) {
+        windows.mapNotNull { w ->
+            val v = valueExtractor(w)
+            if (v != null) Pair(w.windowStart, v) else null
+        }
     }
 
     if (validPoints.size < 2) {
@@ -44,7 +49,7 @@ fun SimpleMetricLineChart(
             Text(
                 text = emptyMessage,
                 fontSize = 12.sp,
-                color = Color.Gray
+                color = textColor
             )
         }
         return
@@ -70,19 +75,19 @@ fun SimpleMetricLineChart(
 
         // Draw horizontal grid lines
         drawLine(
-            color = Color.LightGray.copy(alpha = 0.3f),
+            color = gridColor,
             start = Offset(0f, 0f),
             end = Offset(width, 0f),
             strokeWidth = 1.dp.toPx()
         )
         drawLine(
-            color = Color.LightGray.copy(alpha = 0.3f),
+            color = gridColor,
             start = Offset(0f, height / 2),
             end = Offset(width, height / 2),
             strokeWidth = 1.dp.toPx()
         )
         drawLine(
-            color = Color.LightGray.copy(alpha = 0.3f),
+            color = gridColor,
             start = Offset(0f, height),
             end = Offset(width, height),
             strokeWidth = 1.dp.toPx()
@@ -98,7 +103,7 @@ fun SimpleMetricLineChart(
             drawRect(
                 color = lineColor.copy(alpha = 0.15f),
                 topLeft = Offset(0f, topY),
-                size = androidx.compose.ui.geometry.Size(width, bandHeight)
+                size = Size(width, bandHeight)
             )
         }
 
