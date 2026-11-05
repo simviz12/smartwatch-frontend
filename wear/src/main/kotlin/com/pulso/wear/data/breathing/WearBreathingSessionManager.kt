@@ -61,6 +61,12 @@ class WearBreathingSessionManager private constructor(private val context: Conte
     private var hrBefore: Double? = null
     private var hrAfter: Double? = null
 
+    /** Plan of the running/last session, used by the UI for per-phase countdowns. */
+    val currentPlan: BreathingPlan? get() = activePlan
+
+    /** Heart rate captured when the session started, used for the post-session delta. */
+    val sessionHrBefore: Double? get() = hrBefore
+
     fun setDisplayMode(mode: BreathingDisplayMode) {
         _displayMode.value = mode
     }

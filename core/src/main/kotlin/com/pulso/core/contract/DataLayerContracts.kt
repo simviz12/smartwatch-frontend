@@ -40,6 +40,11 @@ object DataLayerContracts {
     const val BREATHING_ACK_PATH = "/pulso/v1/breathing-ack"
     const val BREATHING_ACK_SCHEMA_VERSION = 1
 
+    // Voice assistant relay: the watch transcribes speech, the phone answers with the LLM.
+    const val ASSISTANT_ASK_PATH = "/pulso/v1/assistant-ask"
+    const val ASSISTANT_REPLY_PATH = "/pulso/v1/assistant-reply"
+    const val ASSISTANT_SCHEMA_VERSION = 1
+
     object Source {
         const val WATCH = "watch"
         const val PHONE = "phone"

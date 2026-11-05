@@ -9,6 +9,9 @@ kotlinxSerialization = "1.7.3"
 # Wear OS
 playServicesWearable = "18.2.0"
 composeWearOs = "1.4.0"
+wearTiles = "1.4.1"
+protolayout = "1.2.1"
+watchface = "1.2.1"
 wearToolingPreview = "1.0.0"
 healthServices = "1.0.0-rc01"
 room = "2.6.1"
@@ -31,6 +34,12 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
 wear-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "composeWearOs" }
 wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "composeWearOs" }
+wear-compose-navigation = { group = "androidx.wear.compose", name = "compose-navigation", version.ref = "composeWearOs" }
+wear-tiles = { group = "androidx.wear.tiles", name = "tiles", version.ref = "wearTiles" }
+wear-protolayout = { group = "androidx.wear.protolayout", name = "protolayout", version.ref = "protolayout" }
+wear-protolayout-material = { group = "androidx.wear.protolayout", name = "protolayout-material", version.ref = "protolayout" }
+wear-protolayout-expression = { group = "androidx.wear.protolayout", name = "protolayout-expression", version.ref = "protolayout" }
+wear-complications-data-source = { group = "androidx.wear.watchface", name = "watchface-complications-data-source-ktx", version.ref = "watchface" }
 wear-compose-ui-tooling = { group = "androidx.wear.compose", name = "compose-ui-tooling", version.ref = "wearToolingPreview" }
 androidx-health-services = { group = "androidx.health", name = "health-services-client", version.ref = "healthServices" }
 androidx-concurrent-futures-ktx = { group = "androidx.concurrent", name = "concurrent-futures-ktx", version.ref = "concurrentFutures" }

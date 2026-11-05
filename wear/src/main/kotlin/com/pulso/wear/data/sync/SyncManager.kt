@@ -118,7 +118,28 @@ class SyncManager private constructor(private val context: Context) :
         }
     }
 
+    /** Sends what the user said on the watch to the phone assistant. */
+    suspend fun sendAssistantAsk(ask: com.pulso.core.model.AssistantAsk): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val phoneNode = Tasks.await(nodeClient.connectedNodes).firstOrNull() ?: return@withContext false
+            Tasks.await(messageClient.sendMessage(phoneNode.id, DataLayerContracts.ASSISTANT_ASK_PATH, ask.toByteArray()))
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to send assistant ask: ${e.message}")
+            false
+        }
+    }
+
     override fun onMessageReceived(messageEvent: MessageEvent) {
+        if (messageEvent.path == DataLayerContracts.ASSISTANT_REPLY_PATH) {
+            try {
+                val reply = com.pulso.core.model.AssistantReply.fromByteArray(messageEvent.data)
+                com.pulso.wear.data.assistant.WearAssistantManager.getInstance(context).onReply(reply)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to parse assistant reply", e)
+            }
+            return
+        }
         if (messageEvent.path == DataLayerContracts.SAMPLES_ACK_PATH) {
             try {
                 val ack = SamplesAck.fromByteArray(messageEvent.data)

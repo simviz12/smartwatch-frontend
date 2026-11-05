@@ -328,6 +328,39 @@ class MobileSyncManager private constructor(private val context: Context) :
                 postOpenChatNotification(eventId)
             }
             DataLayerContracts.BREATHING_PATH -> handleBreathingSessionMessage(messageEvent)
+            DataLayerContracts.ASSISTANT_ASK_PATH -> handleAssistantAsk(messageEvent)
+        }
+    }
+
+    /** Watch spoke to the assistant: answer with the phone's LLM and send the reply back. */
+    private fun handleAssistantAsk(messageEvent: MessageEvent) {
+        scope.launch {
+            val ask = try {
+                com.pulso.core.model.AssistantAsk.fromByteArray(messageEvent.data)
+            } catch (e: Exception) {
+                Log.e(TAG, "Invalid assistant ask from watch", e)
+                return@launch
+            }
+            val replyText = try {
+                com.pulso.mobile.data.chat.PulsoGeminiChatManager.getInstance(context)
+                    .answerFromWatch(ask.text, ask.language)
+            } catch (e: Exception) {
+                Log.e(TAG, "Assistant failed to answer watch", e)
+                if (ask.language == "EN") "I couldn’t answer right now. Let’s take a slow breath together."
+                else "No pude responder ahora. Respiremos despacio juntos."
+            }
+            val reply = com.pulso.core.model.AssistantReply(
+                requestId = ask.requestId,
+                text = replyText,
+                suggestsBreathing = Regex("respir|breath", RegexOption.IGNORE_CASE).containsMatchIn(replyText),
+                sentAt = System.currentTimeMillis()
+            )
+            try {
+                Tasks.await(messageClient.sendMessage(messageEvent.sourceNodeId, DataLayerContracts.ASSISTANT_REPLY_PATH, reply.toByteArray()))
+                Log.i(TAG, "Sent assistant reply ${ask.requestId} to watch")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to send assistant reply to watch", e)
+            }
         }
     }
 

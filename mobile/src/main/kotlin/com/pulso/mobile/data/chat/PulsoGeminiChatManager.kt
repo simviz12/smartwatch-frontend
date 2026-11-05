@@ -50,11 +50,15 @@ class PulsoGeminiChatManager(private val context: Context) : TextToSpeech.OnInit
     private var textToSpeech: TextToSpeech? = null
     private var ttsReady = false
 
-    // Dynamic Gemini API Key resolution (reads from System property or environment variable)
+    // Gemini key injected at build time from local.properties (GEMINI_API_KEY=...), never committed.
+    // System properties/env vars are always empty on Android, so they are only a fallback.
     private val apiKey: String
-        get() = System.getProperty("GEMINI_API_KEY")
-            ?: System.getenv("GEMINI_API_KEY")
-            ?: ""
+        get() = com.pulso.mobile.BuildConfig.GEMINI_API_KEY.ifBlank {
+            System.getProperty("GEMINI_API_KEY") ?: System.getenv("GEMINI_API_KEY") ?: ""
+        }
+
+    /** True when a Gemini key was configured; without it the assistant answers with calm fallbacks. */
+    val isAiConfigured: Boolean get() = apiKey.isNotBlank()
     private val modelEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
     private val scope = CoroutineScope(Dispatchers.Default)
@@ -170,6 +174,18 @@ class PulsoGeminiChatManager(private val context: Context) : TextToSpeech.OnInit
             // Make the AI talk immediately!
             speak(responseText, language)
         }
+    }
+
+    /**
+     * Answers a question spoken on the watch. The exchange is added to the phone's chat
+     * history (so it shows in the Assistant tab) but is not spoken on the phone: the watch speaks it.
+     */
+    suspend fun answerFromWatch(userText: String, language: String = "ES"): String {
+        val clean = userText.trim()
+        _messages.value = _messages.value + ChatMessageItem(sender = "user", text = clean)
+        val reply = callGeminiApi(clean, language)
+        _messages.value = _messages.value + ChatMessageItem(sender = "assistant", text = reply)
+        return reply
     }
 
     private suspend fun callGeminiApi(userPrompt: String, language: String): String = withContext(Dispatchers.IO) {

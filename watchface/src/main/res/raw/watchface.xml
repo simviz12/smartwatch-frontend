@@ -1,0 +1,1135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pulso watch face (Watch Face Format). Data comes from the Pulso app complications. -->
+<WatchFace width="450" height="450">
+  <Metadata key="CLOCK_TYPE" value="DIGITAL" />
+  <Metadata key="PREVIEW_TIME" value="12:58:00" />
+  <Scene backgroundColor="#ff000000">
+    <!-- 24 h ring: 48 half-hour ticks, 00:00 at the top; elapsed part of the day in calm teal. -->
+    <Group name="ring" x="0" y="0" width="450" height="450">
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 0]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="0.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="140" />
+          <Line startX="225" startY="8" endX="225" endY="30">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="0.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="140" />
+          <Line startX="225" startY="8" endX="225" endY="30">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 1]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="7.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="7.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 2]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="15.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="15.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 3]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="22.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="22.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 4]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="30.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="30.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 5]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="37.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="37.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 6]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="45.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="45.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 7]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="52.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="52.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 8]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="60.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="60.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 9]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="67.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="67.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 10]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="75.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="75.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 11]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="82.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="82.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 12]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="90.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="140" />
+          <Line startX="225" startY="8" endX="225" endY="30">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="90.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="140" />
+          <Line startX="225" startY="8" endX="225" endY="30">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 13]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="97.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="97.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 14]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="105.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="105.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 15]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="112.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="112.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 16]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="120.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="120.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 17]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="127.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="127.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 18]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="135.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="135.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 19]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="142.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="142.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 20]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="150.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="150.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 21]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="157.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="157.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 22]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="165.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="165.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 23]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="172.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="172.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 24]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="180.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="140" />
+          <Line startX="225" startY="8" endX="225" endY="30">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="180.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="140" />
+          <Line startX="225" startY="8" endX="225" endY="30">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 25]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="187.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="187.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 26]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="195.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="195.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 27]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="202.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="202.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 28]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="210.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="210.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 29]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="217.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="217.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 30]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="225.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="225.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 31]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="232.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="232.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 32]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="240.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="240.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 33]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="247.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="247.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 34]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="255.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="255.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 35]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="262.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="262.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 36]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="270.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="140" />
+          <Line startX="225" startY="8" endX="225" endY="30">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="270.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="140" />
+          <Line startX="225" startY="8" endX="225" endY="30">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 37]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="277.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="277.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 38]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="285.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="285.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 39]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="292.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="292.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 40]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="300.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="300.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 41]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="307.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="307.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 42]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="315.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="315.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 43]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="322.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="322.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 44]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="330.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="330.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 45]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="337.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="337.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 46]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="345.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="345.0" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= 47]]></Expression>
+        </Expressions>
+        <Compare expression="past">
+        <PartDraw x="0" y="0" width="450" height="450" angle="352.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff3DD6B5" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Compare>
+        <Default>
+        <PartDraw x="0" y="0" width="450" height="450" angle="352.5" pivotX="0.5" pivotY="0.5">
+          <Variant mode="AMBIENT" target="alpha" value="70" />
+          <Line startX="225" startY="8" endX="225" endY="22">
+            <Stroke color="#ff2A353E" thickness="6" cap="ROUND" />
+          </Line>
+        </PartDraw>
+        </Default>
+      </Condition>
+    </Group>
+
+    <PartText x="0" y="76" width="450" height="34">
+      <Variant mode="AMBIENT" target="alpha" value="160" />
+      <Text align="CENTER">
+        <Font family="SYNC_TO_DEVICE" size="24" weight="BOLD" color="#ff3DD6B5">
+          <Template>%s %s<Parameter expression="[DAY_OF_WEEK_S]" /><Parameter expression="[DAY]" /></Template>
+        </Font>
+      </Text>
+    </PartText>
+
+    <!-- Time follows the watch 12/24 h setting. -->
+    <Condition>
+      <Expressions>
+        <Expression name="h24"><![CDATA[[IS_24_HOUR_MODE] == 1]]></Expression>
+      </Expressions>
+      <Compare expression="h24">
+        <PartText x="0" y="108" width="450" height="128">
+          <Text align="CENTER">
+            <Font family="SYNC_TO_DEVICE" size="112" weight="BOLD" color="#ffEEF4F7">
+              <Template>%s:%s<Parameter expression="[HOUR_0_23]" /><Parameter expression="[MINUTE_Z]" /></Template>
+            </Font>
+          </Text>
+        </PartText>
+      </Compare>
+      <Default>
+        <PartText x="0" y="108" width="450" height="128">
+          <Text align="CENTER">
+            <Font family="SYNC_TO_DEVICE" size="112" weight="BOLD" color="#ffEEF4F7">
+              <Template>%s:%s<Parameter expression="[HOUR_1_12]" /><Parameter expression="[MINUTE_Z]" /></Template>
+            </Font>
+          </Text>
+        </PartText>
+      </Default>
+    </Condition>
+
+    <ComplicationSlot slotId="0" x="112" y="238" width="104" height="104" supportedTypes="SHORT_TEXT" isCustomizable="TRUE">
+      <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="SHORT_TEXT"
+          primaryProvider="com.pulso/com.pulso.wear.complication.PulseComplicationService" primaryProviderType="SHORT_TEXT" />
+      <BoundingOval x="0" y="0" width="104" height="104" />
+      <Complication type="SHORT_TEXT">
+        <PartDraw x="0" y="0" width="104" height="104">
+          <Variant mode="AMBIENT" target="alpha" value="0" />
+          <Ellipse x="2" y="2" width="100" height="100">
+            <Fill color="#ff161C21" />
+            <Stroke color="#59FF7A66" thickness="3" />
+          </Ellipse>
+        </PartDraw>
+        <PartText x="0" y="22" width="104" height="40">
+          <Text align="CENTER">
+            <Font family="SYNC_TO_DEVICE" size="32" weight="BOLD" color="#ffEEF4F7">
+              <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template>
+            </Font>
+          </Text>
+        </PartText>
+        <PartText x="0" y="60" width="104" height="24">
+          <Text align="CENTER">
+            <Font family="SYNC_TO_DEVICE" size="16" weight="BOLD" color="#ff9AA8B2">
+              <Template>%s<Parameter expression="[COMPLICATION.TITLE]" /></Template>
+            </Font>
+          </Text>
+        </PartText>
+      </Complication>
+    </ComplicationSlot>
+
+    <ComplicationSlot slotId="1" x="234" y="238" width="104" height="104" supportedTypes="SHORT_TEXT" isCustomizable="TRUE">
+      <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="SHORT_TEXT"
+          primaryProvider="com.pulso/com.pulso.wear.complication.HrvComplicationService" primaryProviderType="SHORT_TEXT" />
+      <BoundingOval x="0" y="0" width="104" height="104" />
+      <Complication type="SHORT_TEXT">
+        <PartDraw x="0" y="0" width="104" height="104">
+          <Variant mode="AMBIENT" target="alpha" value="0" />
+          <Ellipse x="2" y="2" width="100" height="100">
+            <Fill color="#ff161C21" />
+            <Stroke color="#59A3AEFF" thickness="3" />
+          </Ellipse>
+        </PartDraw>
+        <PartText x="0" y="22" width="104" height="40">
+          <Text align="CENTER">
+            <Font family="SYNC_TO_DEVICE" size="32" weight="BOLD" color="#ffEEF4F7">
+              <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template>
+            </Font>
+          </Text>
+        </PartText>
+        <PartText x="0" y="60" width="104" height="24">
+          <Text align="CENTER">
+            <Font family="SYNC_TO_DEVICE" size="16" weight="BOLD" color="#ff9AA8B2">
+              <Template>%s<Parameter expression="[COMPLICATION.TITLE]" /></Template>
+            </Font>
+          </Text>
+        </PartText>
+      </Complication>
+    </ComplicationSlot>
+
+    <ComplicationSlot slotId="2" x="140" y="362" width="170" height="44" supportedTypes="SHORT_TEXT" isCustomizable="TRUE">
+      <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="SHORT_TEXT"
+          primaryProvider="com.pulso/com.pulso.wear.complication.StateComplicationService" primaryProviderType="SHORT_TEXT" />
+      <BoundingBox x="0" y="0" width="170" height="44" />
+      <Complication type="SHORT_TEXT">
+        <PartDraw x="0" y="0" width="170" height="44">
+          <Variant mode="AMBIENT" target="alpha" value="0" />
+          <RoundRectangle x="0" y="0" width="170" height="44" cornerRadiusX="22" cornerRadiusY="22">
+            <Fill color="#293DD6B5" />
+          </RoundRectangle>
+          <Ellipse x="22" y="17" width="10" height="10">
+            <Fill color="#ff3DD6B5" />
+          </Ellipse>
+        </PartDraw>
+        <PartText x="30" y="6" width="130" height="32">
+          <Text align="CENTER">
+            <Font family="SYNC_TO_DEVICE" size="22" weight="BOLD" color="#ff3DD6B5">
+              <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template>
+            </Font>
+          </Text>
+        </PartText>
+      </Complication>
+    </ComplicationSlot>
+  </Scene>
+</WatchFace>

@@ -171,14 +171,21 @@ class WearInterventionManager private constructor(private val context: Context) 
         // Delete intent (when notification times out or is swiped away) -> IGNORED
         val deleteIntent = createActionPendingIntent(eventId, InterventionAction.IGNORED, bucket, 5)
 
-        // Content intent: Opens main activity to breathing route or status
+        // Content + full-screen intent: opens the in-app tension alert (design "Alerta de tensión").
+        val subtitle = if (event.reasons.any { it.code == com.pulso.core.stress.StressReasonCode.ELEVATED_HR_LOW_HRV }) {
+            "Tu pulso subió y tu HRV bajó respecto a tu base"
+        } else {
+            "Tu pulso está sobre tu base sin actividad física"
+        }
         val contentIntent = PendingIntent.getActivity(
             context,
             0,
             Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra("route", "breathing")
-                putExtra("eventId", eventId)
+                putExtra("route", "alert")
+                putExtra(EXTRA_EVENT_ID, eventId)
+                putExtra(EXTRA_BUCKET, bucket)
+                putExtra(EXTRA_ALERT_SUBTITLE, subtitle)
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -193,6 +200,8 @@ class WearInterventionManager private constructor(private val context: Context) 
             .setOngoing(false) // Ongoing-free
             .setTimeoutAfter(NOTIFICATION_TIMEOUT_MS) // Auto-dismiss after 60 seconds
             .setContentIntent(contentIntent)
+            .setFullScreenIntent(contentIntent, true)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setDeleteIntent(deleteIntent)
             .addAction(0, "Hablar", talkIntent)
             .addAction(0, "Respirar", breatheIntent)
@@ -220,6 +229,14 @@ class WearInterventionManager private constructor(private val context: Context) 
             requestCode,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    /** Records the answer given on the in-app alert screen, exactly like a notification action. */
+    fun recordAlertAction(eventId: String, action: InterventionAction, bucket: String?) {
+        dismissNotification()
+        recordFeedback(
+            InterventionFeedback(eventId = eventId, action = action, timeBucket = bucket, timestamp = System.currentTimeMillis())
         )
     }
 
@@ -253,6 +270,7 @@ class WearInterventionManager private constructor(private val context: Context) 
         const val EXTRA_EVENT_ID = "extra_event_id"
         const val EXTRA_ACTION_NAME = "extra_action_name"
         const val EXTRA_BUCKET = "extra_bucket"
+        const val EXTRA_ALERT_SUBTITLE = "extra_alert_subtitle"
 
         @Volatile
         private var INSTANCE: WearInterventionManager? = null

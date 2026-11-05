@@ -78,6 +78,7 @@ class WearStressDetector private constructor(private val context: Context) {
                     configVersion = stressConfig.version
                 )
                 database.stressEventDao().insertEvent(StressEventEntity.fromDomain(event, isSynced = false))
+                com.pulso.wear.data.glance.GlanceRefresher.requestRefresh(context)
                 Log.w(
                     TAG,
                     "Stress detected! EventId=${event.id}, confidence=${event.confidence}, reasons=${event.reasons.size}"
@@ -140,6 +141,7 @@ class WearStressDetector private constructor(private val context: Context) {
             configVersion = 1
         )
         database.stressEventDao().insertEvent(StressEventEntity.fromDomain(event, isSynced = false))
+                com.pulso.wear.data.glance.GlanceRefresher.requestRefresh(context)
         syncManager.syncStressEventsNow()
 
         // Trigger gentle intervention in simulation as well

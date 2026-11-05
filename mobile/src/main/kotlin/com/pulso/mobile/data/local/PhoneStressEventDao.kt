@@ -32,6 +32,10 @@ interface PhoneStressEventDao {
     @Query("SELECT COUNT(*) FROM phone_stress_events")
     suspend fun countEvents(): Int
 
+    /** Removes only demo events (id prefixed with the demo marker). */
+    @Query("DELETE FROM phone_stress_events WHERE id LIKE :prefix || '%'")
+    suspend fun deleteByIdPrefix(prefix: String): Int
+
     @Query("DELETE FROM phone_stress_events")
     suspend fun clearAll()
 }

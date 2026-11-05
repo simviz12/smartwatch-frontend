@@ -127,6 +127,7 @@ class AndroidSensorRepository(
     }
 
     override suspend fun saveWindow(window: MeasurementWindow): Long {
+        com.pulso.wear.data.glance.GlanceStore.recordReading(context, window.meanHr, window.rmssd, window.windowEnd)
         return windowDao.insertWindow(WindowEntity.fromDomain(window))
     }
 

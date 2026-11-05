@@ -41,6 +41,27 @@ Para ejecutar las pruebas unitarias de `:core` y `:wear`:
 Los APKs generados se ubican en:
 - Reloj: `wear/build/outputs/apk/debug/wear-debug.apk`
 - Celular: `mobile/build/outputs/apk/debug/mobile-debug.apk`
+- Esfera del reloj (Watch Face Format): `watchface/build/outputs/apk/debug/watchface-debug.apk`
+
+### Esfera, Tile y complicaciones
+
+Wear OS 5+ solo acepta esferas en **Watch Face Format** (XML, sin código), por eso la esfera vive en el módulo `:watchface`.
+Sus datos (pulso, HRV y estado) los publica la app del reloj como complicaciones, así que deben instalarse ambos APK en el reloj.
+
+```powershell
+adb -s <RELOJ> install -r watchface/build/outputs/apk/debug/watchface-debug.apk
+# Poner la esfera de Pulso
+adb -s <RELOJ> shell am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation set-watchface --es watchFaceId com.pulso.watchface
+# Agregar y mostrar el Tile de Pulso
+adb -s <RELOJ> shell am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation add-tile --ecn component com.pulso/com.pulso.wear.tile.PulsoTileService
+```
+
+El XML de la esfera se genera con `node watchface/generate-watchface.js watchface/src/main/res/raw/watchface.xml`.
+
+### Datos de ejemplo
+
+- **Celular:** Historial › Mapa › *Datos de ejemplo*. Quedan marcados (`source = DEMO`, ids `demo-…`) y *Quitar ejemplo* borra solo esos; los datos reales y el consentimiento se conservan.
+- **Reloj:** Sensores › *Modo demo* muestra valores de ejemplo en la esfera, el Tile y las complicaciones. Cualquier lectura real reciente tiene prioridad y nada de ejemplo se sincroniza con el celular.
 
 ---
 

@@ -201,13 +201,9 @@ class MainViewModel(
                     val updatedStress = current.stressConfig.copy(snoozeUntil = until)
                     syncManager.updateLocalConfig(current.copy(stressConfig = updatedStress))
                 }
-                val label = when (durationMinutes) {
-                    60L -> "1 hora"
-                    240L -> "4 horas"
-                    else -> "mañana"
-                }
+                val untilLabel = java.text.SimpleDateFormat("h:mm a", java.util.Locale("es", "CO")).format(java.util.Date(until))
                 _uiState.value = _uiState.value.copy(
-                    statusMessage = "Avisos pausados por $label"
+                    statusMessage = "Avisos pausados hasta las $untilLabel"
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

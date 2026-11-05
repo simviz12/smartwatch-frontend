@@ -21,9 +21,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Calendar
 
 data class MobileUiState(
@@ -47,6 +50,9 @@ data class MobileUiState(
     val replayResult: ReplaySimulationResult? = null,
     val replayDaysRange: Int = 3, // Default replay last 3 days
     val replayFeedback: String? = null,
+    val replayPreset: SensitivityPreset? = null,
+    val replayComparison: Map<SensitivityPreset, Int> = emptyMap(),
+    val adaptiveSuggestionDismissed: Boolean = false,
     // Debug CSV import state
     val csvImportFeedback: String? = null
 )
@@ -65,10 +71,12 @@ class MobileViewModel(
 
     val breathingSessions: StateFlow<List<com.pulso.mobile.data.local.PhoneBreathingSessionEntity>> = breathingSessionDao
         .getAllSessionsFlow()
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val weeklyBreathingSummary: StateFlow<com.pulso.mobile.domain.breathing.BreathingWeeklySummary> = breathingSessions
         .map { list -> com.pulso.mobile.domain.breathing.BreathingHistoryAggregator.computeWeeklySummary(list) }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.pulso.mobile.domain.breathing.BreathingWeeklySummary(0, 0, 0, 0))
 
     private val startOfToday: Long = Calendar.getInstance().apply {
@@ -81,19 +89,23 @@ class MobileViewModel(
     val todayWindows: StateFlow<List<MeasurementWindow>> = windowDao
         .getWindowsForTodayFlow(startOfToday)
         .map { list -> list.map { it.toDomain() } }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val latestWindow: StateFlow<MeasurementWindow?> = windowDao
         .getLatestWindowFlow()
         .map { it?.toDomain() }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val stressEventEntities: StateFlow<List<com.pulso.mobile.data.local.PhoneStressEventEntity>> = stressEventDao
         .getAllEventsFlow()
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val stressEvents: StateFlow<List<StressEvent>> = stressEventEntities
         .map { list -> list.map { it.toDomain() } }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // 30-day intervention quality metrics
@@ -105,6 +117,7 @@ class MobileViewModel(
             val recentEvents = list.filter { it.time >= thirtyDaysAgo }
             com.pulso.mobile.domain.intervention.InterventionQualityAggregator.computeMetrics(recentEvents)
         }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.pulso.mobile.domain.intervention.InterventionQualityAggregator.computeMetrics(emptyList()))
 
     // Compute rolling 14-day baseline from phone database
@@ -117,6 +130,7 @@ class MobileViewModel(
             val domainWindows = list.map { it.toDomain() }
             BaselineEngine.update(domainWindows)
         }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     // Compare phone baseline with watch reported baselineStatus
@@ -128,11 +142,13 @@ class MobileViewModel(
             phoneBaseline = baseline,
             watchStatusMap = diag.lastWatchStatus?.baselineStatus
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val allWindows: StateFlow<List<MeasurementWindow>> = windowDao
         .getAllWindowsFlow()
         .map { list -> list.map { it.toDomain() } }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val stressMapReport: StateFlow<com.pulso.core.aggregation.StressMapReport> = combine(
@@ -148,7 +164,8 @@ class MobileViewModel(
             breathingFeelings = feelings,
             breathingDurations = durations
         )
-    }.stateIn(
+    }.flowOn(Dispatchers.Default)
+        .stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
         com.pulso.core.aggregation.StressMapAggregator.aggregate(emptyList(), emptyList())
@@ -272,7 +289,7 @@ class MobileViewModel(
     }
 
     fun dismissAdaptiveSuggestion() {
-        // Clear suggestion in diagnostics
+        _uiState.value = _uiState.value.copy(adaptiveSuggestionDismissed = true)
     }
 
     // --- Breathing Actions ---
@@ -321,6 +338,14 @@ class MobileViewModel(
         _uiState.value = _uiState.value.copy(replayDaysRange = days.coerceIn(1, 14))
     }
 
+    fun setReplayPreset(preset: SensitivityPreset) {
+        _uiState.value = _uiState.value.copy(replayPreset = preset)
+    }
+
+    /**
+     * Replays detection over stored history with the sensitivity picked in the lab
+     * (saved settings stay untouched) and counts alerts for each of the three presets.
+     */
     fun runReplaySimulation() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isRunningReplay = true, replayFeedback = null)
@@ -337,16 +362,32 @@ class MobileViewModel(
                 return@launch
             }
 
-            val result = ReplayLabRunner.runReplay(
-                windows = windows,
-                baseline = phoneBaseline.value,
-                config = _uiState.value.stressConfig,
-                quietHours = _uiState.value.quietHours
-            )
+            val state = _uiState.value
+            val baseConfig = state.stressConfig
+            val labConfig = state.replayPreset?.let { SensitivityPreset.toConfig(it, baseConfig) } ?: baseConfig
+            val baselineSnapshot = phoneBaseline.value
+            val (result, comparison) = withContext(Dispatchers.Default) {
+                val main = ReplayLabRunner.runReplay(
+                    windows = windows,
+                    baseline = baselineSnapshot,
+                    config = labConfig,
+                    quietHours = state.quietHours
+                )
+                val counts = listOf(SensitivityPreset.BAJA, SensitivityPreset.MEDIA, SensitivityPreset.ALTA).associateWith { p ->
+                    ReplayLabRunner.runReplay(
+                        windows = windows,
+                        baseline = baselineSnapshot,
+                        config = SensitivityPreset.toConfig(p, baseConfig),
+                        quietHours = state.quietHours
+                    ).totalTriggers
+                }
+                main to counts
+            }
 
             _uiState.value = _uiState.value.copy(
                 isRunningReplay = false,
                 replayResult = result,
+                replayComparison = comparison,
                 replayFeedback = null
             )
         }
@@ -382,67 +423,126 @@ class MobileViewModel(
         }
     }
 
-    fun generateDenseSampleData(days: Int = 90) {
+    /**
+     * Demo data so the app can be explored without a watch. Every demo row is marked
+     * (window source = DEMO_SOURCE, ids prefixed with DEMO_PREFIX) so [clearSampleData]
+     * removes only demo rows and real watch data is never touched.
+     */
+    fun generateDenseSampleData(days: Int = 30) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(csvImportFeedback = "Generando $days días de datos densos...")
-            val now = System.currentTimeMillis()
-            val windowDurationMs = 5 * 60 * 1000L // 5 min
-            val totalWindows = (days * 24 * 12) // 12 windows per hour
-
-            val generatedWindows = mutableListOf<com.pulso.mobile.data.local.PhoneWindowEntity>()
-            val generatedEvents = mutableListOf<com.pulso.mobile.data.local.PhoneStressEventEntity>()
-
-            var curTime = now - (days.toLong() * 24 * 60 * 60 * 1000L)
-            var count = 0
-            while (curTime < now) {
-                val hour = (curTime / (1000 * 60 * 60) % 24).toInt()
-                val isPeakHour = hour in 14..17
-                val baseHr = if (isPeakHour) 85.0 else 68.0
-                val rmssd = if (isPeakHour) 24.0 else 55.0
-
-                generatedWindows.add(
-                    com.pulso.mobile.data.local.PhoneWindowEntity(
-                        watchId = "debug-watch-01",
-                        windowStart = curTime,
-                        windowEnd = curTime + windowDurationMs,
-                        meanHr = baseHr + (count % 7),
-                        minHr = baseHr - 5,
-                        maxHr = baseHr + 12,
-                        rmssd = rmssd,
-                        validIbiCount = 280,
-                        ibiValidRatio = 0.95,
-                        activityState = "STILL",
-                        steps = 10,
-                        onBody = true,
-                        source = "DEBUG_GENERATOR"
-                    )
-                )
-
-                if (isPeakHour && count % 24 == 0) {
-                    generatedEvents.add(
-                        com.pulso.mobile.data.local.PhoneStressEventEntity(
-                            id = "debug-ev-$curTime",
-                            time = curTime,
-                            confidence = 0.88,
-                            reasonsJson = "[]",
-                            windowsUsedJson = "[$curTime]",
-                            configVersion = 1,
-                            userFeedback = if (count % 48 == 0) "HELPFUL" else null
-                        )
-                    )
-                }
-
-                curTime += windowDurationMs
-                count++
-            }
-
-            windowDao.insertOrUpdateAll(generatedWindows)
-            stressEventDao.insertOrUpdateAll(generatedEvents)
-            _uiState.value = _uiState.value.copy(csvImportFeedback = "Datos de $days días generados (${generatedWindows.size} ventanas, ${generatedEvents.eventsCountOrNull() ?: generatedEvents.size} eventos).")
+            _uiState.value = _uiState.value.copy(csvImportFeedback = "Generando $days días de datos de ejemplo…")
+            val result = withContext(Dispatchers.Default) { buildDemoData(days) }
+            windowDao.insertOrUpdateAll(result.windows)
+            stressEventDao.insertOrUpdateAll(result.events)
+            result.sessions.forEach { breathingSessionDao.insertOrUpdate(it) }
+            _uiState.value = _uiState.value.copy(
+                csvImportFeedback = "Datos de ejemplo listos: ${result.windows.size} mediciones, ${result.events.size} eventos y ${result.sessions.size} sesiones de respiración."
+            )
         }
     }
 
-    private fun List<com.pulso.mobile.data.local.PhoneStressEventEntity>.eventsCountOrNull(): Int? = this.size
+    private class DemoData(
+        val windows: List<com.pulso.mobile.data.local.PhoneWindowEntity>,
+        val events: List<com.pulso.mobile.data.local.PhoneStressEventEntity>,
+        val sessions: List<com.pulso.mobile.data.local.PhoneBreathingSessionEntity>
+    )
+
+    private fun buildDemoData(days: Int): DemoData {
+        val random = java.util.Random(42)
+        val now = System.currentTimeMillis()
+        val windowMs = 5 * 60 * 1000L
+        val windows = mutableListOf<com.pulso.mobile.data.local.PhoneWindowEntity>()
+        val events = mutableListOf<com.pulso.mobile.data.local.PhoneStressEventEntity>()
+        val sessions = mutableListOf<com.pulso.mobile.data.local.PhoneBreathingSessionEntity>()
+        val cal = java.util.Calendar.getInstance()
+        var t = now - days * 24L * 60 * 60 * 1000
+        var lastEventAt = 0L
+        while (t < now) {
+            cal.timeInMillis = t
+            val hour = cal.get(java.util.Calendar.HOUR_OF_DAY)
+            val weekday = cal.get(java.util.Calendar.DAY_OF_WEEK) in java.util.Calendar.MONDAY..java.util.Calendar.FRIDAY
+            val asleep = hour < 6
+            // Calm baseline with a work-day load around 10h and 15–17h.
+            val load = when {
+                asleep -> 0.0
+                weekday && hour in 15..16 -> 0.75
+                weekday && hour == 10 -> 0.45
+                else -> 0.15
+            }
+            val hr = (if (asleep) 56.0 else 68.0) + load * 18 + random.nextGaussian() * 2.5
+            val rmssd = (if (asleep) 58.0 else 48.0) - load * 20 + random.nextGaussian() * 3
+            windows += com.pulso.mobile.data.local.PhoneWindowEntity(
+                watchId = "demo-watch",
+                windowStart = t,
+                windowEnd = t + windowMs,
+                meanHr = hr,
+                minHr = hr - 5,
+                maxHr = hr + 9,
+                rmssd = rmssd.coerceAtLeast(12.0),
+                validIbiCount = 280,
+                ibiValidRatio = 0.95,
+                activityState = if (asleep) "ASLEEP" else "PASSIVE",
+                steps = 10,
+                onBody = true,
+                source = DEMO_SOURCE
+            )
+            if (load >= 0.45 && t - lastEventAt > 3 * 60 * 60 * 1000L && random.nextDouble() < 0.12) {
+                lastEventAt = t
+                val confidence = if (load > 0.6) 0.78 + random.nextDouble() * 0.15 else 0.6 + random.nextDouble() * 0.12
+                val feedback = when (random.nextInt(4)) {
+                    0 -> "REVISED_STRESSED"
+                    1 -> "NOT_STRESSED"
+                    else -> null
+                }
+                events += com.pulso.mobile.data.local.PhoneStressEventEntity(
+                    id = "${DEMO_PREFIX}ev-$t",
+                    time = t,
+                    confidence = confidence,
+                    reasonsJson = "[]",
+                    windowsUsedJson = "[" + (0 until 3).joinToString(",") { (t - it * windowMs).toString() } + "]",
+                    configVersion = 1,
+                    userFeedback = if (now - t < 24 * 60 * 60 * 1000L) null else feedback
+                )
+            }
+            t += windowMs
+        }
+        // A breathing session most days of the last two weeks.
+        val plans = listOf("Calma 4-6", "Relajante 4-7-8", "Cuadrada 4-4-4-4")
+        for (d in 0 until 14) {
+            if (random.nextInt(5) == 0) continue
+            cal.timeInMillis = now - d * 24L * 60 * 60 * 1000
+            cal.set(java.util.Calendar.HOUR_OF_DAY, 16)
+            cal.set(java.util.Calendar.MINUTE, 40 + random.nextInt(15))
+            val start = cal.timeInMillis.coerceAtMost(now - 10 * 60_000L)
+            val minutes = 2 + random.nextInt(3)
+            val before = 82.0 + random.nextInt(8)
+            sessions += com.pulso.mobile.data.local.PhoneBreathingSessionEntity(
+                sessionId = "${DEMO_PREFIX}br-$start",
+                startedAt = start,
+                completedAt = start + minutes * 60_000L,
+                planName = plans[d % plans.size],
+                targetCycles = minutes * 6,
+                completedCycles = minutes * 6,
+                endedBy = "COMPLETED",
+                hrBefore = before,
+                hrAfter = before - 6 - random.nextInt(6),
+                feeling = listOf("BETTER", "BETTER", "SAME", "BETTER")[random.nextInt(4)]
+            )
+        }
+        return DemoData(windows, events, sessions)
+    }
+
+    /** Removes only demo rows (and rows from the older debug generator); real data and consent stay. */
+    fun clearSampleData() {
+        viewModelScope.launch {
+            val w = windowDao.deleteBySource(DEMO_SOURCE) + windowDao.deleteBySource("DEBUG_GENERATOR")
+            val e = stressEventDao.deleteByIdPrefix(DEMO_PREFIX) + stressEventDao.deleteByIdPrefix("debug-ev-")
+            val b = breathingSessionDao.deleteByIdPrefix(DEMO_PREFIX)
+            _uiState.value = _uiState.value.copy(
+                csvImportFeedback = "Datos de ejemplo quitados ($w mediciones, $e eventos, $b sesiones). Tus datos reales se conservan."
+            )
+        }
+    }
 
     fun wipeAllUserData() {
         viewModelScope.launch {
@@ -457,7 +557,6 @@ class MobileViewModel(
         }
     }
 
-    fun clearSampleData() = wipeAllUserData()
 
     // --- Baseline & Consent Actions ---
 
@@ -497,6 +596,9 @@ class MobileViewModel(
     }
 
     companion object {
+        const val DEMO_SOURCE = "DEMO"
+        const val DEMO_PREFIX = "demo-"
+
         fun provideFactory(
             syncManager: MobileSyncManager,
             windowDao: PhoneWindowDao,

@@ -27,6 +27,10 @@ interface PhoneBreathingSessionDao {
     @Query("SELECT COUNT(*) FROM phone_breathing_sessions")
     suspend fun getCount(): Int
 
+    /** Removes only demo breathing sessions (id prefixed with the demo marker). */
+    @Query("DELETE FROM phone_breathing_sessions WHERE sessionId LIKE :prefix || '%'")
+    suspend fun deleteByIdPrefix(prefix: String): Int
+
     @Query("DELETE FROM phone_breathing_sessions")
     suspend fun clearAll()
 }

@@ -23,3 +23,5 @@ rootProject.name = "Pulso"
 include(":core")
 include(":wear")
 include(":mobile")
+
+include(":watchface")

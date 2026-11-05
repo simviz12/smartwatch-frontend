@@ -144,6 +144,7 @@ class SensorSamplingService : Service() {
                     )
 
                     database.windowDao().insertWindow(WindowEntity.fromDomain(window, synced = false))
+                    com.pulso.wear.data.glance.GlanceStore.recordReading(this@SensorSamplingService, window.meanHr, window.rmssd, windowEnd)
                     Log.i(TAG, "Saved window: meanHr=$meanHr, minHr=$minHr, maxHr=$maxHr, samples=${windowSamples.size}")
 
                     // Evaluate stress in OBSERVE-ONLY mode

@@ -38,6 +38,13 @@ interface PhoneWindowDao {
     @Query("SELECT * FROM phone_measurement_windows ORDER BY windowStart ASC")
     fun getAllWindowsFlow(): Flow<List<PhoneWindowEntity>>
 
+    /** Removes only demo readings (source = DEBUG_GENERATOR); real watch data is kept. */
+    @Query("DELETE FROM phone_measurement_windows WHERE source = :source")
+    suspend fun deleteBySource(source: String): Int
+
+    @Query("SELECT COUNT(*) FROM phone_measurement_windows WHERE source = :source")
+    suspend fun countBySource(source: String): Int
+
     @Query("DELETE FROM phone_measurement_windows")
     suspend fun clearAll()
 }

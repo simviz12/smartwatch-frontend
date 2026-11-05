@@ -61,6 +61,10 @@ import com.pulso.wear.domain.usecase.ObserveWindowsUseCase
 import com.pulso.wear.domain.usecase.SendPingUseCase
 import com.pulso.wear.domain.usecase.TriggerSyncUseCase
 import com.pulso.wear.presentation.theme.PulsoWearTheme
+import androidx.compose.ui.platform.LocalContext
+import androidx.wear.compose.navigation.SwipeDismissableNavHost
+import androidx.wear.compose.navigation.composable
+import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 
 class MainActivity : ComponentActivity() {
 
@@ -102,7 +106,12 @@ class MainActivity : ComponentActivity() {
         } catch (_: Exception) {}
 
         val route = intent.getStringExtra("route")
-        var currentRoute by mutableStateOf(route)
+        val launchedForBreathing = route == "breathing"
+        val launchedForAlert = route == "alert"
+        val alertEventId = intent.getStringExtra(com.pulso.wear.data.intervention.WearInterventionManager.EXTRA_EVENT_ID)
+        val alertBucket = intent.getStringExtra(com.pulso.wear.data.intervention.WearInterventionManager.EXTRA_BUCKET)
+        val alertSubtitle = intent.getStringExtra(com.pulso.wear.data.intervention.WearInterventionManager.EXTRA_ALERT_SUBTITLE)
+            ?: "Tu pulso está sobre tu base sin actividad física"
 
         setContent {
             PulsoWearTheme {
@@ -111,47 +120,126 @@ class MainActivity : ComponentActivity() {
                 val breathingSnapshot by breathingManager.currentSnapshot.collectAsState()
                 val displayMode by breathingManager.displayMode.collectAsState()
                 val liveHr = uiState.liveHeartRate.bpm
+                val navController = rememberSwipeDismissableNavController()
+                val context = LocalContext.current
+                val breathingConfig = uiState.config?.breathingConfig ?: com.pulso.core.breathing.BreathingConfig()
 
-                if (currentRoute == "breathing") {
-                    com.pulso.wear.presentation.components.BreathingSessionScreen(
-                        snapshot = breathingSnapshot,
-                        displayMode = displayMode,
-                        liveHr = liveHr,
-                        onToggleDisplayMode = {
-                            val nextMode = if (displayMode == com.pulso.wear.data.breathing.BreathingDisplayMode.VIBRATION_ONLY) {
-                                com.pulso.wear.data.breathing.BreathingDisplayMode.VISUAL_GUIDE
-                            } else {
-                                com.pulso.wear.data.breathing.BreathingDisplayMode.VIBRATION_ONLY
-                            }
-                            breathingManager.setDisplayMode(nextMode)
-                        },
-                        onStartSession = { plan, minutes, mode ->
-                            breathingManager.startSession(plan = plan, mode = mode, currentHr = liveHr)
-                        },
-                        onStopSession = {
-                            breathingManager.stopSession(com.pulso.core.breathing.SessionEndReason.USER_STOPPED)
-                        },
-                        onSaveFeeling = { feeling ->
-                            breathingManager.saveFeeling(feeling)
-                        },
-                        onFinishScreen = {
-                            if (route == "breathing") {
-                                finish()
-                            } else {
-                                currentRoute = null
-                            }
+                SwipeDismissableNavHost(
+                    navController = navController,
+                    startDestination = when {
+                        launchedForAlert && alertEventId != null -> Routes.ALERT
+                        launchedForBreathing -> Routes.BREATHING
+                        else -> Routes.HOME
+                    }
+                ) {
+                    composable(Routes.HOME) {
+                        HomeScreen(
+                            uiState = uiState,
+                            onOpenBreathing = { navController.navigate(Routes.BREATHING) },
+                            onOpenLivePulse = { navController.navigate(Routes.LIVE) },
+                            onTalk = { navController.navigate(Routes.VOICE) },
+                            onOpenPause = { navController.navigate(Routes.PAUSE) },
+                            onOpenSensors = { navController.navigate(Routes.SENSORS) }
+                        )
+                    }
+                    composable(Routes.LIVE) { LivePulseScreen(uiState) }
+                    composable(Routes.VOICE) {
+                        val assistant = remember { com.pulso.wear.data.assistant.WearAssistantManager.getInstance(context) }
+                        androidx.compose.runtime.DisposableEffect(Unit) { onDispose { assistant.reset() } }
+                        VoiceAssistantScreen(manager = assistant, onBreathe = {
+                            assistant.reset()
+                            navController.navigate(Routes.BREATHING) { popUpTo(Routes.VOICE) { inclusive = true } }
+                        })
+                    }
+                    composable(Routes.ALERT) {
+                        val intervention = remember { com.pulso.wear.data.intervention.WearInterventionManager.getInstance(context) }
+                        val eventId = alertEventId ?: ""
+                        val close: () -> Unit = {
+                            if (navController.previousBackStackEntry == null) finish() else navController.popBackStack()
                         }
-                    )
-                } else {
-                    MainScreen(
-                        viewModel = viewModel,
-                        onOpenBreathing = { currentRoute = "breathing" },
-                        onCopyReport = {
-                            val path = viewModel.saveReportToFile(this@MainActivity)
-                            Log.i("PulsoReport", "Capability report saved: $path")
-                            Toast.makeText(this@MainActivity, "Guardado en $path", Toast.LENGTH_LONG).show()
-                        }
-                    )
+                        StressAlertScreen(
+                            subtitle = alertSubtitle,
+                            onBreathe = {
+                                intervention.recordAlertAction(eventId, com.pulso.core.intervention.InterventionAction.BREATHE, alertBucket)
+                                val base = breathingConfig.toPlan()
+                                val plan = com.pulso.core.breathing.BreathingPlan.withTargetDuration(base, 1)
+                                breathingManager.startSession(plan = plan, currentHr = liveHr)
+                                navController.navigate(Routes.BREATHING) { popUpTo(Routes.ALERT) { inclusive = true } }
+                            },
+                            onNotNow = {
+                                intervention.recordAlertAction(eventId, com.pulso.core.intervention.InterventionAction.DISMISS, alertBucket)
+                                close()
+                            },
+                            onNotStressed = {
+                                intervention.recordAlertAction(eventId, com.pulso.core.intervention.InterventionAction.NOT_STRESSED, alertBucket)
+                                close()
+                            },
+                            onTimeout = {
+                                intervention.recordAlertAction(eventId, com.pulso.core.intervention.InterventionAction.IGNORED, alertBucket)
+                                close()
+                            }
+                        )
+                    }
+                    composable(Routes.PAUSE) {
+                        PauseAlertsScreen(
+                            snoozeUntil = uiState.config?.stressConfig?.snoozeUntil,
+                            onPause = { minutes -> viewModel.snoozeAlerts(minutes, context) }
+                        )
+                    }
+                    composable(Routes.SENSORS) {
+                        SensorsScreen(
+                            uiState = uiState,
+                            onSync = { viewModel.triggerSync() },
+                            onSaveReport = {
+                                val path = viewModel.saveReportToFile(this@MainActivity)
+                                Log.i("PulsoReport", "Capability report saved: $path")
+                                Toast.makeText(this@MainActivity, "Guardado en $path", Toast.LENGTH_LONG).show()
+                            }
+                        )
+                    }
+                    composable(Routes.BREATHING) {
+                        com.pulso.wear.presentation.components.BreathingSessionScreen(
+                            snapshot = breathingSnapshot,
+                            displayMode = displayMode,
+                            liveHr = liveHr,
+                            plan = breathingManager.currentPlan,
+                            hrBefore = breathingManager.sessionHrBefore,
+                            defaultPlanName = breathingConfig.preferredPlanName,
+                            defaultMinutes = breathingConfig.durationMinutes,
+                            onToggleDisplayMode = {
+                                val nextMode = if (displayMode == com.pulso.wear.data.breathing.BreathingDisplayMode.VIBRATION_ONLY) {
+                                    com.pulso.wear.data.breathing.BreathingDisplayMode.VISUAL_GUIDE
+                                } else {
+                                    com.pulso.wear.data.breathing.BreathingDisplayMode.VIBRATION_ONLY
+                                }
+                                breathingManager.setDisplayMode(nextMode)
+                            },
+                            onStartSession = { plan, _, mode ->
+                                breathingManager.startSession(plan = plan, mode = mode, currentHr = liveHr)
+                            },
+                            onPauseResume = {
+                                if (breathingSnapshot?.state == com.pulso.core.breathing.BreathingSessionState.PAUSED) {
+                                    breathingManager.resumeSession()
+                                } else {
+                                    breathingManager.pauseSession()
+                                }
+                            },
+                            onStopSession = {
+                                breathingManager.stopSession(com.pulso.core.breathing.SessionEndReason.USER_STOPPED)
+                            },
+                            onSaveFeeling = { feeling ->
+                                breathingManager.updatePostSessionHr(liveHr)
+                                breathingManager.saveFeeling(feeling)
+                            },
+                            onFinishScreen = {
+                                if (navController.previousBackStackEntry == null) {
+                                    finish()
+                                } else {
+                                    navController.popBackStack()
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -183,353 +271,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable
-fun MainScreen(
-    viewModel: MainViewModel,
-    onOpenBreathing: () -> Unit,
-    onCopyReport: () -> Unit
-) {
-    val uiState by viewModel.uiState.collectAsState()
-    val listState = rememberScalingLazyListState()
-
-    Scaffold(
-        timeText = { TimeText() },
-        positionIndicator = { PositionIndicator(scalingLazyListState = listState) }
-    ) {
-        ScalingLazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFF0A0F14))
-                .padding(horizontal = 12.dp),
-            state = listState,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Header Minimalista
-            item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 18.dp, bottom = 6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "PULSO",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color(0xFF2DD4BF),
-                        letterSpacing = 3.sp
-                    )
-                    Text(
-                        text = "ACOMPAÑAMIENTO EN VIVO",
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF64748B),
-                        letterSpacing = 1.sp
-                    )
-                }
-            }
-
-            // TARJETA DE ACCIÓN 1: Respiración Adaptativa (Clínica)
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF0F2332))
-                        .clickable { onOpenBreathing() }
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "RESPIRACIÓN",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF38BDF8),
-                                letterSpacing = 1.sp
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "Calma Guiada",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFFF1F5F9)
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFF0284C7))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = "INICIAR",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Black,
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Espaciador suave
-            item { Spacer(modifier = Modifier.height(4.dp)) }
-
-            // TARJETA DE ACCIÓN 2: Asistente Psicológico por Voz
-            item {
-                val context = androidx.compose.ui.platform.LocalContext.current
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF062D24))
-                        .clickable {
-                            try {
-                                com.pulso.wear.data.speech.WearSpeechManager.getInstance(context).speak("Estoy aquí contigo. Respira profundo.")
-                            } catch (_: Exception) {}
-                            viewModel.openChatOnPhone(context)
-                        }
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "ASISTENCIA",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF34D399),
-                                letterSpacing = 1.sp
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "Hablar con Terapeuta",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFFF1F5F9)
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFF059669))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = "VOZ",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Black,
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Espaciador suave
-            item { Spacer(modifier = Modifier.height(4.dp)) }
-
-            // Consent Gate o Monitor Biométrico en Tiempo Real
-            val isConsentGranted = uiState.config?.collectionEnabled == true
-            if (!isConsentGranted) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color(0xFF1E1B18))
-                            .padding(12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "VINCULACIÓN PENDIENTE",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFFFBBF24),
-                                letterSpacing = 1.sp
-                            )
-                            Spacer(modifier = Modifier.height(3.dp))
-                            Text(
-                                text = "Activa los sensores en tu celular",
-                                fontSize = 10.sp,
-                                color = Color(0xFFE2E8F0),
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                }
-            } else {
-                // Tarjeta Biométrica Elegante
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFF131C24))
-                            .padding(12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "RITMO CARDÍACO",
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF64748B),
-                                letterSpacing = 1.sp
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            val bpmText = uiState.liveHeartRate.bpm?.let { "${it.toInt()}" } ?: "--"
-                            Row(verticalAlignment = Alignment.Bottom) {
-                                Text(
-                                    text = bpmText,
-                                    fontSize = 28.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = if (uiState.liveHeartRate.bpm != null) Color(0xFF34D399) else Color(0xFF94A3B8)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "BPM",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF64748B),
-                                    modifier = Modifier.padding(bottom = 4.dp)
-                                )
-                            }
-                            Text(
-                                text = "Sensor: ${uiState.liveHeartRate.availability}",
-                                fontSize = 9.sp,
-                                color = Color(0xFF475569)
-                            )
-                        }
-                    }
-                }
-
-                // Sincronización biométrica rápida
-                item {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF1B2733))
-                            .clickable(enabled = !uiState.isSyncing) { viewModel.triggerSync() }
-                            .padding(vertical = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (uiState.isSyncing) {
-                            CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
-                        } else {
-                            Text(
-                                text = "Sincronizar datos (${uiState.totalWindowsLogged})",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF94A3B8)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Pausar Alertas (Snooze Clínico)
-            item {
-                Spacer(modifier = Modifier.height(4.dp))
-                val context = androidx.compose.ui.platform.LocalContext.current
-                var showSnoozeOptions by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF1B2733))
-                            .clickable { showSnoozeOptions = !showSnoozeOptions }
-                            .padding(vertical = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (showSnoozeOptions) "Cerrar pausa" else "Pausar notificaciones",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF94A3B8)
-                        )
-                    }
-
-                    if (showSnoozeOptions) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        androidx.compose.foundation.layout.Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)
-                        ) {
-                            listOf(60L to "1h", 240L to "4h", 720L to "12h").forEach { (min, label) ->
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(Color(0xFF263544))
-                                        .clickable {
-                                            viewModel.snoozeAlerts(min, context)
-                                            showSnoozeOptions = false
-                                        }
-                                        .padding(vertical = 6.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Diagnósticos & Herramientas avanzadas
-            item {
-                Spacer(modifier = Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFF161F28))
-                        .clickable { onCopyReport() }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Informe de sensores",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF64748B)
-                    )
-                }
-            }
-
-            // Feedback / Mensajes de estado
-            item {
-                uiState.statusMessage?.let { msg ->
-                    Text(
-                        text = msg,
-                        fontSize = 9.sp,
-                        color = Color(0xFF2DD4BF),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-                    )
-                }
-            }
-
-            // Espaciador final para dar holgura al scroll redondo
-            item {
-                Spacer(modifier = Modifier.height(20.dp))
-            }
-        }
-    }
+private object Routes {
+    const val HOME = "home"
+    const val LIVE = "live"
+    const val PAUSE = "pause"
+    const val SENSORS = "sensors"
+    const val BREATHING = "breathing"
+    const val VOICE = "voice"
+    const val ALERT = "alert"
 }

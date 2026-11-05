@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static preview of the Pulso tile for the tile picker. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="210dp"
+    android:height="210dp"
+    android:viewportWidth="420"
+    android:viewportHeight="420">
+    <path android:fillColor="#000000" android:pathData="M210,0a210,210 0,1 1,0 420a210,210 0,1 1,0 -420z" />
+    <path android:pathData="M104,316a150,150 0,0 1,-20 -190" android:strokeColor="#3DD6B5" android:strokeWidth="14" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M100,104a150,150 0,0 1,170 -50" android:strokeColor="#F5B94A" android:strokeAlpha="0.55" android:strokeWidth="14" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M300,90a150,150 0,0 1,50 90" android:strokeColor="#FF7A66" android:strokeAlpha="0.55" android:strokeWidth="14" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:fillColor="#3DD6B5" android:pathData="M140,160h140v44h-140z" />
+    <path android:fillColor="#EEF4F7" android:pathData="M150,222h120v16h-120z" />
+    <path android:fillColor="#3DD6B5" android:pathData="M147,300h126a32,32 0,0 1,0 64h-126a32,32 0,0 1,0 -64z" />
+</vector>

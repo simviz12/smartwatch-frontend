@@ -1,58 +1,78 @@
 package com.pulso.mobile.presentation
 
+import android.content.Context
+import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.pulso.core.model.MeasurementWindow
+import androidx.compose.ui.platform.LocalContext
+import com.pulso.mobile.data.chat.PulsoGeminiChatManager
 import com.pulso.mobile.data.local.PulsoMobileDatabase
-import com.pulso.mobile.data.sync.MobileDiagnosticsState
 import com.pulso.mobile.data.sync.MobileSyncManager
-import java.util.Date
+import com.pulso.mobile.domain.stress.SensitivityPreset
+import com.pulso.mobile.presentation.components.NavDest
+import com.pulso.mobile.presentation.components.PulsoBottomBar
+import com.pulso.mobile.presentation.i18n.AppLanguage
+import com.pulso.mobile.presentation.screens.AssistantScreen
+import com.pulso.mobile.presentation.screens.BaselineScreen
+import com.pulso.mobile.presentation.screens.BreatheScreen
+import com.pulso.mobile.presentation.screens.DiagnosticsScreen
+import com.pulso.mobile.presentation.screens.HistoryScreen
+import com.pulso.mobile.presentation.screens.LabScreen
+import com.pulso.mobile.presentation.screens.OnboardingScreen
+import com.pulso.mobile.presentation.screens.SettingsScreen
+import com.pulso.mobile.presentation.screens.TodayScreen
+import com.pulso.mobile.presentation.theme.DarkPulsoColors
+import com.pulso.mobile.presentation.theme.LightPulsoColors
+import com.pulso.mobile.presentation.theme.PulsoTheme
+import com.pulso.mobile.presentation.theme.ThemeMode
+import java.util.Calendar
+
+/** Tab indices kept stable because notifications/intents route by number (6 = assistant). */
+object Tabs {
+    const val TODAY = 0
+    const val DIAGNOSTICS = 1
+    const val SETTINGS = 2
+    const val BASELINE = 3
+    const val EVENTS = 4
+    const val LAB = 5
+    const val ASSISTANT = 6
+    const val BREATHE = 7
+    const val MAP = 8
+}
 
 class MainActivity : ComponentActivity() {
 
@@ -71,11 +91,20 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         handleChatIntent(intent)
         setContent {
-            MainPhoneScreen(
+            PulsoApp(
                 viewModel = viewModel,
-                chatManager = com.pulso.mobile.data.chat.PulsoGeminiChatManager.getInstance(this)
+                chatManager = PulsoGeminiChatManager.getInstance(this),
+                onSystemBars = { light -> applySystemBars(light) }
             )
         }
+    }
+
+    private fun applySystemBars(light: Boolean) {
+        val transparent = AndroidColor.TRANSPARENT
+        enableEdgeToEdge(
+            statusBarStyle = if (light) SystemBarStyle.light(transparent, transparent) else SystemBarStyle.dark(transparent),
+            navigationBarStyle = if (light) SystemBarStyle.light(transparent, transparent) else SystemBarStyle.dark(transparent)
+        )
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
@@ -85,922 +114,255 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleChatIntent(intent: android.content.Intent?) {
-        if (intent?.getStringExtra("route") == "chat_placeholder" || intent?.getStringExtra("route") == "chat") {
-            viewModel.selectTab(6)
+        val route = intent?.getStringExtra("route")
+        if (route == "chat_placeholder" || route == "chat") {
+            viewModel.selectTab(Tabs.ASSISTANT)
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+private fun screenOrder(tab: Int): Int = when (tab) {
+    Tabs.TODAY -> 0
+    Tabs.EVENTS, Tabs.MAP -> 1
+    Tabs.BREATHE -> 2
+    Tabs.ASSISTANT -> 3
+    Tabs.SETTINGS -> 4
+    Tabs.BASELINE -> 5
+    Tabs.LAB -> 6
+    else -> 7
+}
+
+private const val PREFS = "pulso_ui"
+private const val KEY_THEME = "theme_mode"
+private const val KEY_LANG = "language"
+
 @Composable
-fun MainPhoneScreen(
+fun PulsoApp(
     viewModel: MobileViewModel,
-    chatManager: com.pulso.mobile.data.chat.PulsoGeminiChatManager
+    chatManager: PulsoGeminiChatManager,
+    onSystemBars: (Boolean) -> Unit
 ) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
+    var themeMode by remember {
+        mutableStateOf(runCatching { ThemeMode.valueOf(prefs.getString(KEY_THEME, ThemeMode.DARK.name)!!) }.getOrDefault(ThemeMode.DARK))
+    }
+    var language by remember {
+        mutableStateOf(runCatching { AppLanguage.valueOf(prefs.getString(KEY_LANG, AppLanguage.ES.name)!!) }.getOrDefault(AppLanguage.ES))
+    }
+    val systemDark = isSystemInDarkTheme()
+    val light = when (themeMode) {
+        ThemeMode.SYSTEM -> !systemDark
+        ThemeMode.LIGHT -> true
+        ThemeMode.DARK -> false
+    }
+    LaunchedEffect(light) { onSystemBars(light) }
+
+    val setTheme: (ThemeMode) -> Unit = { themeMode = it; prefs.edit().putString(KEY_THEME, it.name).apply() }
+    val setLanguage: (AppLanguage) -> Unit = { language = it; prefs.edit().putString(KEY_LANG, it.name).apply() }
+
+    PulsoTheme(colors = if (light) LightPulsoColors else DarkPulsoColors, language = language) {
+        PulsoNavigation(
+            viewModel = viewModel,
+            chatManager = chatManager,
+            themeMode = themeMode,
+            language = language,
+            isLight = light,
+            onTheme = setTheme,
+            onLanguage = setLanguage
+        )
+    }
+}
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun PulsoNavigation(
+    viewModel: MobileViewModel,
+    chatManager: PulsoGeminiChatManager,
+    themeMode: ThemeMode,
+    language: AppLanguage,
+    isLight: Boolean,
+    onTheme: (ThemeMode) -> Unit,
+    onLanguage: (AppLanguage) -> Unit
+) {
+    val c = com.pulso.mobile.presentation.theme.Pulso.colors
     val uiState by viewModel.uiState.collectAsState()
     val diagnostics by viewModel.diagnosticsState.collectAsState()
     val todayWindows by viewModel.todayWindows.collectAsState()
     val latestWindow by viewModel.latestWindow.collectAsState()
-    val phoneBaseline by viewModel.phoneBaseline.collectAsState()
+    val baseline by viewModel.phoneBaseline.collectAsState()
     val baselineMismatch by viewModel.baselineMismatch.collectAsState()
     val breathingSessions by viewModel.breathingSessions.collectAsState()
-    val weeklyBreathingSummary by viewModel.weeklyBreathingSummary.collectAsState()
+    val weeklySummary by viewModel.weeklyBreathingSummary.collectAsState()
+    val events by viewModel.stressEventEntities.collectAsState()
+    val qualityMetrics by viewModel.qualityMetrics.collectAsState()
+    val mapReport by viewModel.stressMapReport.collectAsState()
 
-    var isLightMode by remember { mutableStateOf(false) }
-    var currentLanguage by remember { mutableStateOf(com.pulso.mobile.presentation.i18n.AppLanguage.ES) }
-    val theme = remember(isLightMode) { com.pulso.mobile.presentation.theme.getPulsoTheme(isLightMode) }
+    var diagnosticsReturn by rememberSaveable { mutableIntStateOf(Tabs.SETTINGS) }
+    val tab = uiState.selectedTab
+    val imeVisible = WindowInsets.isImeVisible
 
-    val showOnboarding = !diagnostics.consentGranted
+    LaunchedEffect(language) { chatManager.initInitialGreeting(language.name) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "PULSO",
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.sp,
-                            color = theme.primary
-                        )
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(theme.cardBackground)
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "IA",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = theme.primary
+    Box(Modifier.fillMaxSize().background(c.bg)) {
+        if (!diagnostics.consentGranted) {
+            Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+                OnboardingScreen(
+                    language = language,
+                    onLanguage = onLanguage,
+                    onToggleTheme = { onTheme(if (isLight) ThemeMode.DARK else ThemeMode.LIGHT) },
+                    onAccept = { viewModel.grantConsent() }
+                )
+            }
+            return@Box
+        }
+
+        val subScreenParent = when (tab) {
+            Tabs.BASELINE, Tabs.LAB -> Tabs.SETTINGS
+            Tabs.DIAGNOSTICS -> diagnosticsReturn
+            else -> null
+        }
+        BackHandler(enabled = subScreenParent != null) { viewModel.selectTab(subScreenParent ?: Tabs.TODAY) }
+
+        val dest = when (tab) {
+            Tabs.TODAY -> NavDest.TODAY
+            Tabs.EVENTS, Tabs.MAP -> NavDest.HISTORY
+            Tabs.BREATHE -> NavDest.BREATHE
+            Tabs.ASSISTANT -> NavDest.ASSISTANT
+            Tabs.DIAGNOSTICS -> if (diagnosticsReturn == Tabs.TODAY) NavDest.TODAY else NavDest.SETTINGS
+            else -> NavDest.SETTINGS
+        }
+
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f).fillMaxWidth().statusBarsPadding().imePadding()) {
+                AnimatedContent(
+                    targetState = if (tab == Tabs.MAP) Tabs.EVENTS else tab,
+                    transitionSpec = {
+                        // Slide in the direction of travel along the bottom bar; sub-screens come from the right.
+                        val forward = screenOrder(targetState) >= screenOrder(initialState)
+                        val dir = if (forward) 1 else -1
+                        (fadeIn(tween(260, delayMillis = 60)) + slideInHorizontally(tween(340, easing = FastOutSlowInEasing)) { it / 7 * dir })
+                            .togetherWith(fadeOut(tween(140)) + slideOutHorizontally(tween(280, easing = FastOutSlowInEasing)) { -it / 10 * dir })
+                    },
+                    label = "screen"
+                ) { screen ->
+                    when (screen) {
+                        Tabs.TODAY -> {
+                            val dayStart = remember {
+                                Calendar.getInstance().apply {
+                                    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                                }.timeInMillis
+                            }
+                            TodayScreen(
+                                windows = todayWindows,
+                                latestWindow = latestWindow,
+                                baseline = baseline,
+                                todayEvents = events.filter { it.time >= dayStart },
+                                breathingSessionTimes = breathingSessions.map { it.completedAt },
+                                watchConnected = diagnostics.watchConnected,
+                                breathingMinutes = uiState.breathingConfig.durationMinutes,
+                                onOpenDiagnostics = { diagnosticsReturn = Tabs.TODAY; viewModel.selectTab(Tabs.DIAGNOSTICS) },
+                                onBreathe = { viewModel.selectTab(Tabs.BREATHE) },
+                                onOpenEvents = { viewModel.selectTab(Tabs.EVENTS) }
                             )
                         }
-                    }
-                },
-                actions = {
-                    // English / Spanish Switch Button
-                    Button(
-                        onClick = {
-                            currentLanguage = if (currentLanguage == com.pulso.mobile.presentation.i18n.AppLanguage.ES) {
-                                com.pulso.mobile.presentation.i18n.AppLanguage.EN
-                            } else {
-                                com.pulso.mobile.presentation.i18n.AppLanguage.ES
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = theme.cardBackground),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        Text(
-                            text = if (currentLanguage == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "ES" else "EN",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = theme.primary
+                        Tabs.EVENTS -> HistoryScreen(
+                            initialTab = if (tab == Tabs.MAP) 1 else 0,
+                            events = events,
+                            report = mapReport,
+                            sampleFeedback = uiState.csvImportFeedback,
+                            onTabChange = { viewModel.selectTab(if (it == 1) Tabs.MAP else Tabs.EVENTS) },
+                            onUpdateFeedback = { id, fb -> viewModel.updateEventFeedback(id, fb) },
+                            onGenerateSampleData = { viewModel.generateDenseSampleData(30) },
+                            onClearAllData = { viewModel.clearSampleData() }
+                        )
+                        Tabs.BREATHE -> BreatheScreen(
+                            config = uiState.breathingConfig,
+                            sessions = breathingSessions,
+                            weeklySummary = weeklySummary,
+                            isStartingOnWatch = uiState.isTestingBreathingOnWatch,
+                            feedback = uiState.breathingTestFeedback,
+                            onUpdatePlan = { viewModel.updateBreathingPlan(it) },
+                            onUpdateDuration = { viewModel.updateBreathingDuration(it) },
+                            onUpdateIntensity = { viewModel.updateBreathingIntensity(it) },
+                            onStartOnWatch = { viewModel.testBreathingOnWatch() }
+                        )
+                        Tabs.ASSISTANT -> AssistantScreen(
+                            chatManager = chatManager,
+                            onStartBreathing = { viewModel.selectTab(Tabs.BREATHE) }
+                        )
+                        Tabs.SETTINGS -> SettingsScreen(
+                            themeMode = themeMode,
+                            language = language,
+                            config = uiState.stressConfig,
+                            preset = uiState.sensitivityPreset,
+                            quietHours = uiState.quietHours,
+                            qualityMetrics = qualityMetrics,
+                            adaptiveSuggestion = diagnostics.adaptiveSuggestion.takeUnless { uiState.adaptiveSuggestionDismissed },
+                            isSaving = uiState.isSavingConfig,
+                            saveFeedback = uiState.configSaveFeedback,
+                            onThemeMode = onTheme,
+                            onLanguage = onLanguage,
+                            onPreset = { viewModel.onPresetSelected(it) },
+                            onUpdateThresholds = { hrZ, hrvZ, hrOnlyZ, a, b, cd, cap -> viewModel.onUpdateThresholds(hrZ, hrvZ, hrOnlyZ, a, b, cd, cap) },
+                            onQuietHours = { viewModel.onUpdateQuietHours(it.startHour, it.startMinute, it.endHour, it.endMinute) },
+                            onResetDefaults = { viewModel.resetToDefaultConfig() },
+                            onSave = { viewModel.saveConfig() },
+                            onCancelSnooze = { viewModel.cancelSnooze() },
+                            onApplySuggestion = { viewModel.applyAdaptiveSuggestion() },
+                            onDismissSuggestion = { viewModel.dismissAdaptiveSuggestion() },
+                            onOpenBaseline = { viewModel.selectTab(Tabs.BASELINE) },
+                            onOpenLab = { viewModel.selectTab(Tabs.LAB) },
+                            onOpenDiagnostics = { diagnosticsReturn = Tabs.SETTINGS; viewModel.selectTab(Tabs.DIAGNOSTICS) },
+                            onRevokeConsent = { viewModel.revokeConsent() },
+                            onWipeData = { viewModel.wipeAllUserData() }
+                        )
+                        Tabs.BASELINE -> BaselineScreen(
+                            baseline = baseline,
+                            latestWindow = latestWindow,
+                            isResetting = uiState.isResettingBaseline,
+                            resetFeedback = uiState.resetFeedback,
+                            onReset = { viewModel.resetBaseline() },
+                            onBack = { viewModel.selectTab(Tabs.SETTINGS) }
+                        )
+                        Tabs.LAB -> LabScreen(
+                            daysRange = uiState.replayDaysRange,
+                            preset = uiState.replayPreset ?: uiState.sensitivityPreset,
+                            isRunning = uiState.isRunningReplay,
+                            result = uiState.replayResult,
+                            comparison = uiState.replayComparison,
+                            feedback = uiState.replayFeedback,
+                            onDaysRange = { viewModel.setReplayDaysRange(it) },
+                            onPreset = { viewModel.setReplayPreset(it) },
+                            onRun = { viewModel.runReplaySimulation() },
+                            onApply = { preset ->
+                                viewModel.applyLabConfigToSettings(SensitivityPreset.toConfig(preset, uiState.stressConfig))
+                                viewModel.selectTab(Tabs.SETTINGS)
+                            },
+                            onBack = { viewModel.selectTab(Tabs.SETTINGS) }
+                        )
+                        Tabs.DIAGNOSTICS -> DiagnosticsScreen(
+                            diagnostics = diagnostics,
+                            baselineMismatch = baselineMismatch,
+                            isTesting = uiState.isTestingPing,
+                            pingFeedback = uiState.pingFeedback,
+                            onTestConnection = { viewModel.testWatchConnection() },
+                            onBack = { viewModel.selectTab(diagnosticsReturn) }
                         )
                     }
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    // Light / Dark Theme Switch Button
-                    Button(
-                        onClick = { isLightMode = !isLightMode },
-                        colors = ButtonDefaults.buttonColors(containerColor = theme.cardBackground),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.height(32.dp).padding(end = 8.dp)
-                    ) {
-                        Text(
-                            text = if (isLightMode) com.pulso.mobile.presentation.i18n.PulsoStrings.themeLight(currentLanguage) else com.pulso.mobile.presentation.i18n.PulsoStrings.themeDark(currentLanguage),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = theme.primary
-                        )
+                }
+            }
+            if (!imeVisible) PulsoBottomBar(selected = dest) { d ->
+                viewModel.selectTab(
+                    when (d) {
+                        NavDest.TODAY -> Tabs.TODAY
+                        NavDest.HISTORY -> Tabs.EVENTS
+                        NavDest.BREATHE -> Tabs.BREATHE
+                        NavDest.ASSISTANT -> Tabs.ASSISTANT
+                        NavDest.SETTINGS -> Tabs.SETTINGS
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = theme.topBarBackground,
-                    titleContentColor = theme.primary
-                )
-            )
-        },
-        bottomBar = {
-            if (!showOnboarding) {
-                NavigationBar(
-                    containerColor = theme.topBarBackground
-                ) {
-                    NavigationBarItem(
-                        selected = uiState.selectedTab == 0,
-                        onClick = { viewModel.selectTab(0) },
-                        label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabToday(currentLanguage)) },
-                        icon = { Text("HOY", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (uiState.selectedTab == 0) theme.primary else theme.textSecondary) }
-                    )
-                    NavigationBarItem(
-                        selected = uiState.selectedTab == 6,
-                        onClick = { viewModel.selectTab(6) },
-                        label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabChat(currentLanguage)) },
-                        icon = { Text("IA", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (uiState.selectedTab == 6) theme.primary else theme.textSecondary) }
-                    )
-                    NavigationBarItem(
-                        selected = uiState.selectedTab == 4,
-                        onClick = { viewModel.selectTab(4) },
-                        label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabEvents(currentLanguage)) },
-                        icon = { Text("EVT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (uiState.selectedTab == 4) theme.primary else theme.textSecondary) }
-                    )
-                    NavigationBarItem(
-                        selected = uiState.selectedTab == 7,
-                        onClick = { viewModel.selectTab(7) },
-                        label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabBreathe(currentLanguage)) },
-                        icon = { Text("RESP", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (uiState.selectedTab == 7) theme.primary else theme.textSecondary) }
-                    )
-                    NavigationBarItem(
-                        selected = uiState.selectedTab == 8,
-                        onClick = { viewModel.selectTab(8) },
-                        label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabMap(currentLanguage)) },
-                        icon = { Text("MAPA", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (uiState.selectedTab == 8) theme.primary else theme.textSecondary) }
-                    )
-                    NavigationBarItem(
-                        selected = uiState.selectedTab == 2,
-                        onClick = { viewModel.selectTab(2) },
-                        label = { Text(com.pulso.mobile.presentation.i18n.PulsoStrings.tabSettings(currentLanguage)) },
-                        icon = { Text("AJUST", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (uiState.selectedTab == 2) theme.primary else theme.textSecondary) }
-                    )
-                }
-            }
-        }
-    ) { innerPadding ->
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            color = theme.background
-        ) {
-            when {
-                showOnboarding -> {
-                    OnboardingScreen(
-                        theme = theme,
-                        language = currentLanguage,
-                        onAcceptConsent = { viewModel.grantConsent() }
-                    )
-                }
-                uiState.selectedTab == 0 -> {
-                    HoyScreen(
-                        windows = todayWindows,
-                        latestWindow = latestWindow,
-                        baseline = phoneBaseline,
-                        breathingSessionTimes = breathingSessions.map { it.completedAt },
-                        theme = theme,
-                        language = currentLanguage,
-                        onNavigateToBaseline = { viewModel.selectTab(3) }
-                    )
-                }
-                uiState.selectedTab == 1 -> {
-                    DiagnosticoScreen(
-                        diagnostics = diagnostics,
-                        baselineMismatch = baselineMismatch,
-                        isTestingPing = uiState.isTestingPing,
-                        pingFeedback = uiState.pingFeedback,
-                        theme = theme,
-                        language = currentLanguage,
-                        onTestConnection = { viewModel.testWatchConnection() }
-                    )
-                }
-                uiState.selectedTab == 2 -> {
-                    val qualityMetrics by viewModel.qualityMetrics.collectAsState()
-                    AjustesScreen(
-                        diagnostics = diagnostics,
-                        currentConfig = uiState.stressConfig,
-                        currentPreset = uiState.sensitivityPreset,
-                        quietHours = uiState.quietHours,
-                        isSavingConfig = uiState.isSavingConfig,
-                        configSaveFeedback = uiState.configSaveFeedback,
-                        qualityMetrics = qualityMetrics,
-                        theme = theme,
-                        language = currentLanguage,
-                        onPresetSelected = { viewModel.onPresetSelected(it) },
-                        onUpdateThresholds = { hrZ, hrvZ, hrOnlyZ, a, b, cd, cap ->
-                            viewModel.onUpdateThresholds(hrZ, hrvZ, hrOnlyZ, a, b, cd, cap)
-                        },
-                        onUpdateQuietHours = { sh, sm, eh, em -> viewModel.onUpdateQuietHours(sh, sm, eh, em) },
-                        onResetDefaults = { viewModel.resetToDefaultConfig() },
-                        onSaveConfig = { viewModel.saveConfig() },
-                        onOpenLab = { viewModel.selectTab(5) },
-                        onNavigateToBaseline = { viewModel.selectTab(3) },
-                        onOpenBreathing = { viewModel.selectTab(7) },
-                        onCancelSnooze = { viewModel.cancelSnooze() },
-                        onApplyAdaptiveSuggestion = { viewModel.applyAdaptiveSuggestion() },
-                        onDismissAdaptiveSuggestion = { viewModel.dismissAdaptiveSuggestion() },
-                        onRevokeConsent = { viewModel.revokeConsent() }
-                    )
-                }
-                uiState.selectedTab == 3 -> {
-                    BaselineScreen(
-                        baseline = phoneBaseline,
-                        onResetBaseline = { viewModel.resetBaseline() },
-                        resetFeedback = uiState.resetFeedback
-                    )
-                }
-                uiState.selectedTab == 4 -> {
-                    val stressEventEntities by viewModel.stressEventEntities.collectAsState()
-                    com.pulso.mobile.presentation.components.StressEventListScreen(
-                        entities = stressEventEntities,
-                        onUpdateFeedback = { eventId, feedback -> viewModel.updateEventFeedback(eventId, feedback) },
-                        onBack = { viewModel.selectTab(0) }
-                    )
-                }
-                uiState.selectedTab == 5 -> {
-                    com.pulso.mobile.presentation.components.ReplayLabScreen(
-                        currentConfig = uiState.stressConfig,
-                        daysRange = uiState.replayDaysRange,
-                        isRunning = uiState.isRunningReplay,
-                        result = uiState.replayResult,
-                        feedback = uiState.replayFeedback,
-                        onDaysRangeChange = { viewModel.setReplayDaysRange(it) },
-                        onRunReplay = { viewModel.runReplaySimulation() },
-                        onApplyConfig = {
-                            viewModel.applyLabConfigToSettings(it)
-                            viewModel.selectTab(2)
-                        },
-                        onBack = { viewModel.selectTab(2) }
-                    )
-                }
-                uiState.selectedTab == 6 -> {
-                    com.pulso.mobile.presentation.components.GeminiVoiceChatScreen(
-                        chatManager = chatManager,
-                        language = currentLanguage,
-                        theme = theme,
-                        onBack = { viewModel.selectTab(0) }
-                    )
-                }
-                uiState.selectedTab == 7 -> {
-                    com.pulso.mobile.presentation.components.BreathingScreen(
-                        currentConfig = uiState.breathingConfig,
-                        sessions = breathingSessions,
-                        weeklySummary = weeklyBreathingSummary,
-                        isTestingOnWatch = uiState.isTestingBreathingOnWatch,
-                        testingFeedback = uiState.breathingTestFeedback,
-                        onUpdatePlan = { viewModel.updateBreathingPlan(it) },
-                        onUpdateDuration = { viewModel.updateBreathingDuration(it) },
-                        onUpdateIntensity = { viewModel.updateBreathingIntensity(it) },
-                        onTestOnWatch = { viewModel.testBreathingOnWatch() }
-                    )
-                }
-                uiState.selectedTab == 8 -> {
-                    val mapReport by viewModel.stressMapReport.collectAsState()
-                    com.pulso.mobile.presentation.components.StressMapScreen(
-                        report = mapReport,
-                        isImportingSample = false,
-                        sampleImportFeedback = uiState.csvImportFeedback,
-                        onGenerateSampleData = { viewModel.generateDenseSampleData(90) },
-                        onClearSampleData = { viewModel.clearSampleData() }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun OnboardingScreen(
-    theme: com.pulso.mobile.presentation.theme.PulsoThemeColors,
-    language: com.pulso.mobile.presentation.i18n.AppLanguage,
-    onAcceptConsent: () -> Unit
-) {
-    var isChecked by remember { mutableStateOf(true) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(theme.background)
-            .padding(24.dp)
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "Bienvenido a Pulso" else "Welcome to Pulso",
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
-            color = theme.primary
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES)
-                "Tu acompañante de bienestar y autorregulación emocional."
-                else "Your companion for emotional regulation and wellness.",
-            fontSize = 14.sp,
-            color = theme.textPrimary,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = theme.cardBackground),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, theme.border, RoundedCornerShape(12.dp))
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "Aviso de Bienestar y Privacidad" else "Wellness & Privacy Notice",
-                    fontWeight = FontWeight.Bold,
-                    color = theme.warning,
-                    fontSize = 15.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES)
-                        "• Pulso es una herramienta de bienestar, NO un dispositivo médico.\n" +
-                        "• Mide periódicamente tu pulso cardíaco para detectar patrones de tensión.\n" +
-                        "• Tus datos biométricos permanecen exclusivamente en tus dispositivos (reloj y celular).\n" +
-                        "• No vendemos ni compartimos tus datos de salud con terceros.\n" +
-                        "• Asistente conversacional con IA para acompañarte en momentos de estrés."
-                        else
-                        "• Pulso is a wellness tool, NOT a medical device.\n" +
-                        "• Periodically analyzes pulse to detect patterns of tension.\n" +
-                        "• Biometric data remains strictly on your local devices.\n" +
-                        "• We never sell or share your data with third parties.\n" +
-                        "• AI emotional companion ready to support you when stressed.",
-                    fontSize = 13.sp,
-                    color = theme.textSecondary,
-                    lineHeight = 20.sp
                 )
             }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Checkbox(
-                checked = isChecked,
-                onCheckedChange = { isChecked = it }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES)
-                    "He leído y acepto la recolección y análisis local de mis datos de pulso."
-                    else "I have read and accept local analysis of my pulse data.",
-                fontSize = 12.sp,
-                color = theme.textPrimary
-            )
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Button(
-            onClick = onAcceptConsent,
-            enabled = isChecked,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = theme.primary)
-        ) {
-            Text(
-                text = if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "Empezar a usar Pulso" else "Start using Pulso",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = theme.onPrimary
-            )
-        }
-    }
-}
-
-@Composable
-fun HoyScreen(
-    windows: List<MeasurementWindow>,
-    latestWindow: MeasurementWindow?,
-    baseline: com.pulso.core.baseline.Baseline?,
-    breathingSessionTimes: List<Long> = emptyList(),
-    theme: com.pulso.mobile.presentation.theme.PulsoThemeColors,
-    language: com.pulso.mobile.presentation.i18n.AppLanguage,
-    onNavigateToBaseline: () -> Unit
-) {
-    // Resolve current bucket for baseline overlay
-    val now = System.currentTimeMillis()
-    val currentBucket = com.pulso.core.baseline.BaselineEngine.resolveBucket(
-        timestamp = now,
-        activityState = latestWindow?.activityState ?: "PASSIVE"
-    )
-    val currentBucketStats = baseline?.buckets?.get(currentBucket)
-    val hrBaselineRange: Pair<Double, Double>? = if (currentBucketStats?.state == com.pulso.core.baseline.BaselineState.READY) {
-        val median = currentBucketStats.hrMedian ?: 70.0
-        val mad = currentBucketStats.hrMad ?: 5.0
-        Pair(median - (1.4826 * mad), median + (1.4826 * mad))
-    } else null
-
-    val hrvBaselineRange: Pair<Double, Double>? = if (currentBucketStats?.state == com.pulso.core.baseline.BaselineState.READY && currentBucketStats.rmssdMedian != null && currentBucketStats.rmssdMad != null) {
-        val median = currentBucketStats.rmssdMedian!!
-        val mad = currentBucketStats.rmssdMad!!
-        Pair(median - (1.4826 * mad), median + (1.4826 * mad))
-    } else null
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(theme.background)
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState())
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = com.pulso.mobile.presentation.i18n.PulsoStrings.todayTitle(language),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = theme.textPrimary
-            )
-            Button(
-                onClick = onNavigateToBaseline,
-                colors = ButtonDefaults.buttonColors(containerColor = theme.cardBackground),
-                modifier = Modifier
-                    .height(34.dp)
-                    .border(1.dp, theme.border, RoundedCornerShape(12.dp))
-            ) {
-                Text(
-                    text = com.pulso.mobile.presentation.i18n.PulsoStrings.yourBaseline(language),
-                    fontSize = 12.sp,
-                    color = theme.primary
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Cards Row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            // HR Card
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .border(1.dp, theme.border, RoundedCornerShape(12.dp)),
-                colors = CardDefaults.cardColors(containerColor = theme.cardBackground)
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Text(com.pulso.mobile.presentation.i18n.PulsoStrings.latestPulse(language), fontSize = 12.sp, color = theme.textSecondary)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    val hrText = latestWindow?.let { "${it.meanHr.toInt()} BPM" } ?: com.pulso.mobile.presentation.i18n.PulsoStrings.noData(language)
-                    Text(hrText, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = theme.success)
-                }
-            }
-
-            // HRV Card
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .border(1.dp, theme.border, RoundedCornerShape(12.dp)),
-                colors = CardDefaults.cardColors(containerColor = theme.cardBackground)
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Text(com.pulso.mobile.presentation.i18n.PulsoStrings.hrvRmssd(language), fontSize = 12.sp, color = theme.textSecondary)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    val hrvText = latestWindow?.rmssd?.let { "${it.toInt()} ms" } ?: com.pulso.mobile.presentation.i18n.PulsoStrings.noData(language)
-                    Text(hrvText, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = theme.primary)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Windows recorded card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, theme.border, RoundedCornerShape(12.dp)),
-            colors = CardDefaults.cardColors(containerColor = theme.cardBackground)
-        ) {
-            Row(
-                modifier = Modifier
-                    .padding(14.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(com.pulso.mobile.presentation.i18n.PulsoStrings.measurementsToday(language), fontSize = 12.sp, color = theme.textSecondary)
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(com.pulso.mobile.presentation.i18n.PulsoStrings.windowsCount(language, windows.size), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = theme.textPrimary)
-                }
-                latestWindow?.let {
-                    val minutesAgo = ((System.currentTimeMillis() - it.windowEnd) / 60000).coerceAtLeast(0)
-                    Text(com.pulso.mobile.presentation.i18n.PulsoStrings.minutesAgo(language, minutesAgo), fontSize = 12.sp, color = theme.warning)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // HR Chart with baseline overlay and breathing markers
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(com.pulso.mobile.presentation.i18n.PulsoStrings.hrTrendTitle(language), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = theme.textPrimary)
-            if (hrBaselineRange != null) {
-                Text(
-                    com.pulso.mobile.presentation.i18n.PulsoStrings.rangeLabel(language, hrBaselineRange.first.toInt(), hrBaselineRange.second.toInt(), "BPM"),
-                    fontSize = 11.sp,
-                    color = theme.success
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(6.dp))
-        SimpleMetricLineChart(
-            windows = windows,
-            valueExtractor = { it.meanHr },
-            lineColor = theme.success,
-            emptyMessage = com.pulso.mobile.presentation.i18n.PulsoStrings.emptyHrMessage(language),
-            baselineRange = hrBaselineRange,
-            breathingSessionTimes = breathingSessionTimes,
-            textColor = theme.textSecondary,
-            gridColor = theme.border,
-            modifier = Modifier
-                .clip(RoundedCornerShape(10.dp))
-                .background(theme.cardBackground)
-                .border(1.dp, theme.border, RoundedCornerShape(10.dp))
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // HRV Chart with baseline overlay and breathing markers
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(com.pulso.mobile.presentation.i18n.PulsoStrings.hrvTrendTitle(language), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = theme.textPrimary)
-            if (hrvBaselineRange != null) {
-                Text(
-                    com.pulso.mobile.presentation.i18n.PulsoStrings.rangeLabel(language, hrvBaselineRange.first.toInt(), hrvBaselineRange.second.toInt(), "ms"),
-                    fontSize = 11.sp,
-                    color = theme.primary
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(6.dp))
-        SimpleMetricLineChart(
-            windows = windows,
-            valueExtractor = { it.rmssd },
-            lineColor = theme.primary,
-            emptyMessage = com.pulso.mobile.presentation.i18n.PulsoStrings.emptyHrvMessage(language),
-            baselineRange = hrvBaselineRange,
-            breathingSessionTimes = breathingSessionTimes,
-            textColor = theme.textSecondary,
-            gridColor = theme.border,
-            modifier = Modifier
-                .clip(RoundedCornerShape(10.dp))
-                .background(theme.cardBackground)
-                .border(1.dp, theme.border, RoundedCornerShape(10.dp))
-        )
-    }
-}
-
-@Composable
-fun DiagnosticoScreen(
-    diagnostics: MobileDiagnosticsState,
-    baselineMismatch: String?,
-    isTestingPing: Boolean,
-    pingFeedback: String?,
-    theme: com.pulso.mobile.presentation.theme.PulsoThemeColors,
-    language: com.pulso.mobile.presentation.i18n.AppLanguage,
-    onTestConnection: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(theme.background)
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState())
-    ) {
-        Text(com.pulso.mobile.presentation.i18n.PulsoStrings.diagnosticsTitle(language), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = theme.textPrimary)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Mismatch Alert if detected
-        baselineMismatch?.let { mismatchText ->
-            Card(
-                colors = CardDefaults.cardColors(containerColor = theme.error.copy(alpha = 0.15f)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, theme.error, RoundedCornerShape(12.dp))
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Text(
-                        if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "ALERTA: Discrepancia de Línea Base" else "ALERT: Baseline Discrepancy",
-                        fontWeight = FontWeight.Bold,
-                        color = theme.error,
-                        fontSize = 14.sp
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(mismatchText, color = theme.textPrimary, fontSize = 12.sp)
-                }
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-        }
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = theme.cardBackground),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, theme.border, RoundedCornerShape(12.dp))
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(com.pulso.mobile.presentation.i18n.PulsoStrings.consentCardTitle(language), fontWeight = FontWeight.Bold, color = theme.primary, fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(4.dp))
-                val statusText = if (diagnostics.consentGranted) {
-                    if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "Aceptado" else "Granted"
-                } else {
-                    if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "No otorgado" else "Revoked"
-                }
-                Text("• Estado: $statusText", color = theme.textPrimary, fontSize = 13.sp)
-                Text("• Versión: ${diagnostics.consentVersion ?: "N/A"}", color = theme.textSecondary, fontSize = 12.sp)
-                diagnostics.consentTimestamp?.let {
-                    Text("• Fecha: ${Date(it)}", color = theme.textSecondary, fontSize = 12.sp)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = theme.cardBackground),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, theme.border, RoundedCornerShape(12.dp))
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(com.pulso.mobile.presentation.i18n.PulsoStrings.watchConnectionTitle(language), fontWeight = FontWeight.Bold, color = theme.primary, fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(4.dp))
-                val connStatus = if (diagnostics.watchConnected) {
-                    if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "SÍ (${diagnostics.connectedWatchNodeName})" else "YES (${diagnostics.connectedWatchNodeName})"
-                } else {
-                    if (language == com.pulso.mobile.presentation.i18n.AppLanguage.ES) "NO" else "NO"
-                }
-                Text("• Conectado: $connStatus", color = theme.textPrimary, fontSize = 13.sp)
-                diagnostics.lastWatchStatus?.let { status ->
-                    Text("• Batería: ${status.batteryPct}%", color = theme.textPrimary, fontSize = 13.sp)
-                    Text("• Servicio: ${if (status.serviceRunning) "Activo" else "Detenido"}", color = theme.textPrimary, fontSize = 13.sp)
-                    Text("• Modelo: ${status.watchModel}", color = theme.textSecondary, fontSize = 12.sp)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = theme.cardBackground),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, theme.border, RoundedCornerShape(12.dp))
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(com.pulso.mobile.presentation.i18n.PulsoStrings.storageSyncTitle(language), fontWeight = FontWeight.Bold, color = theme.primary, fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("• Ventanas: ${diagnostics.totalWindowsStored}", color = theme.textPrimary, fontSize = 13.sp)
-                Text("• Lote: ${diagnostics.lastSyncBatchId ?: "Ninguno"}", color = theme.textSecondary, fontSize = 12.sp)
-                diagnostics.lastError?.let { err ->
-                    Text("• Error: $err", color = theme.error, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = onTestConnection,
-            enabled = !isTestingPing,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(44.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = theme.primary)
-        ) {
-            if (isTestingPing) {
-                CircularProgressIndicator(strokeWidth = 2.dp, color = theme.onPrimary)
-            } else {
-                Text(com.pulso.mobile.presentation.i18n.PulsoStrings.testWatchConnection(language), fontSize = 13.sp, color = theme.onPrimary)
-            }
-        }
-
-        pingFeedback?.let {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                it,
-                color = if (it.contains("exitoso") || it.contains("success")) theme.success else theme.error,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
-
-@Composable
-fun AjustesScreen(
-    diagnostics: MobileDiagnosticsState,
-    currentConfig: com.pulso.core.stress.StressConfig,
-    currentPreset: com.pulso.mobile.domain.stress.SensitivityPreset,
-    quietHours: com.pulso.core.model.QuietHours,
-    isSavingConfig: Boolean,
-    configSaveFeedback: String?,
-    qualityMetrics: com.pulso.mobile.domain.intervention.QualityMetrics,
-    theme: com.pulso.mobile.presentation.theme.PulsoThemeColors,
-    language: com.pulso.mobile.presentation.i18n.AppLanguage,
-    onPresetSelected: (com.pulso.mobile.domain.stress.SensitivityPreset) -> Unit,
-    onUpdateThresholds: (hrZ: Double, hrvZ: Double, hrOnlyZ: Double, consecA: Int, consecB: Int, cooldown: Int, dailyCap: Int) -> Unit,
-    onUpdateQuietHours: (startH: Int, startM: Int, endH: Int, endM: Int) -> Unit,
-    onResetDefaults: () -> Unit,
-    onSaveConfig: () -> Unit,
-    onOpenLab: () -> Unit,
-    onNavigateToBaseline: () -> Unit,
-    onOpenBreathing: () -> Unit,
-    onCancelSnooze: () -> Unit,
-    onApplyAdaptiveSuggestion: () -> Unit,
-    onDismissAdaptiveSuggestion: () -> Unit,
-    onRevokeConsent: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(theme.background)
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState())
-    ) {
-        Text(com.pulso.mobile.presentation.i18n.PulsoStrings.settingsTitle(language), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = theme.textPrimary)
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Sensitivity Section
-        com.pulso.mobile.presentation.components.SensitivitySettingsSection(
-            currentConfig = currentConfig,
-            currentPreset = currentPreset,
-            quietHours = quietHours,
-            isSaving = isSavingConfig,
-            saveFeedback = configSaveFeedback,
-            qualityMetrics = qualityMetrics,
-            adaptiveSuggestion = diagnostics.adaptiveSuggestion,
-            onPresetSelected = onPresetSelected,
-            onUpdateThresholds = onUpdateThresholds,
-            onUpdateQuietHours = onUpdateQuietHours,
-            onResetDefaults = onResetDefaults,
-            onSaveConfig = onSaveConfig,
-            onOpenLab = onOpenLab,
-            onCancelSnooze = onCancelSnooze,
-            onApplyAdaptiveSuggestion = onApplyAdaptiveSuggestion,
-            onDismissAdaptiveSuggestion = onDismissAdaptiveSuggestion
-        )
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = theme.cardBackground),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, theme.border, RoundedCornerShape(12.dp))
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(com.pulso.mobile.presentation.i18n.PulsoStrings.breathingHapticTitle(language), fontWeight = FontWeight.Bold, color = theme.primary, fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    com.pulso.mobile.presentation.i18n.PulsoStrings.breathingHapticDesc(language),
-                    fontSize = 12.sp,
-                    color = theme.textSecondary
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Button(
-                    onClick = onOpenBreathing,
-                    colors = ButtonDefaults.buttonColors(containerColor = theme.accent),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(40.dp)
-                ) {
-                    Text(com.pulso.mobile.presentation.i18n.PulsoStrings.configureBreathing(language), fontSize = 13.sp, color = Color.White)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = theme.cardBackground),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, theme.border, RoundedCornerShape(12.dp))
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(com.pulso.mobile.presentation.i18n.PulsoStrings.baselineCardTitle(language), fontWeight = FontWeight.Bold, color = theme.primary, fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    com.pulso.mobile.presentation.i18n.PulsoStrings.baselineCardDesc(language),
-                    fontSize = 12.sp,
-                    color = theme.textSecondary
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Button(
-                    onClick = onNavigateToBaseline,
-                    colors = ButtonDefaults.buttonColors(containerColor = theme.primary),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(40.dp)
-                ) {
-                    Text(com.pulso.mobile.presentation.i18n.PulsoStrings.viewMyBaseline(language), fontSize = 13.sp, color = theme.onPrimary)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            com.pulso.mobile.presentation.i18n.PulsoStrings.revokeConsentWarning(language),
-            fontSize = 13.sp,
-            color = theme.textSecondary
-        )
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        Button(
-            onClick = onRevokeConsent,
-            colors = ButtonDefaults.buttonColors(containerColor = theme.error),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-        ) {
-            Text(com.pulso.mobile.presentation.i18n.PulsoStrings.revokeConsent(language), fontWeight = FontWeight.Bold, color = Color.White)
-        }
-    }
-}
-
-@Composable
-fun ChatPlaceholderScreen(onBack: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Surface(
-            color = Color(0xFF1E293B),
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.padding(bottom = 16.dp)
-        ) {
-            Text(
-                "PULSO ASISTENTE",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF38BDF8),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            "Espacio de Acompañamiento",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            "Elegiste 'Hablar' desde tu reloj. Queremos escucharte y brindarte un espacio de calma.",
-            fontSize = 14.sp,
-            color = Color(0xFF94A3B8),
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(20.dp))
-        Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    "El asistente conversacional llega en la Parte 8.",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = Color(0xFF38BDF8)
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    "Por ahora registramos tu intención de diálogo para calibrar las intervenciones. No generamos respuestas simuladas.",
-                    fontSize = 12.sp,
-                    color = Color.LightGray
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = onBack,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
-            modifier = Modifier.fillMaxWidth().height(44.dp)
-        ) {
-            Text("Volver al inicio", fontSize = 14.sp)
         }
     }
 }
