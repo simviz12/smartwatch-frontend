@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Dark window background so the app never flashes white before Compose draws. -->
+    <!-- Light window background: the app always opens in the light theme. -->
     <style name="Theme.Pulso" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/pulso_bg</item>
         <item name="android:statusBarColor">@android:color/transparent</item>

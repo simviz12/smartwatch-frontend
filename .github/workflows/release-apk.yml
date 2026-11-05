@@ -34,8 +34,11 @@ jobs:
         run: ./gradlew :core:test :mobile:testDebugUnitTest :wear:testDebugUnitTest --stacktrace
 
       - name: Assemble APKs
-        # Optional: add a GEMINI_API_KEY repository secret to enable the AI assistant in the phone APK.
+        # Repository secrets (Settings › Secrets and variables › Actions):
+        #   PULSO_API_URL  → URL of the backend on Render, enables sign-in (e.g. https://pulso-api-xxxx.onrender.com)
+        #   GEMINI_API_KEY → optional, enables the AI assistant
         env:
+          PULSO_API_URL: ${{ secrets.PULSO_API_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: ./gradlew :mobile:assembleDebug :wear:assembleDebug :watchface:assembleDebug --stacktrace
 

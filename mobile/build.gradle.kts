@@ -1,12 +1,17 @@
 import java.util.Properties
 
-// Gemini key comes from local.properties (git-ignored) or the GEMINI_API_KEY env var at build time.
-val geminiApiKey: String = run {
-    val props = Properties()
+// Build-time settings from local.properties (git-ignored) or environment variables (CI secrets).
+val localProps = Properties().apply {
     val file = rootProject.file("local.properties")
-    if (file.exists()) file.inputStream().use { props.load(it) }
-    (props.getProperty("GEMINI_API_KEY") ?: System.getenv("GEMINI_API_KEY") ?: "").trim()
+    if (file.exists()) file.inputStream().use { load(it) }
 }
+fun buildSetting(key: String, default: String = ""): String =
+    (localProps.getProperty(key) ?: System.getenv(key) ?: default).trim()
+
+val geminiApiKey: String = buildSetting("GEMINI_API_KEY")
+// Pulso backend (sign-in): the URL Render gives you, e.g. https://pulso-api-xxxx.onrender.com.
+// No default on purpose, so credentials are never sent to a server you don't control.
+val pulsoApiUrl: String = buildSetting("PULSO_API_URL").trimEnd('/')
 
 plugins {
     alias(libs.plugins.android.application)
@@ -26,6 +31,7 @@ android {
         versionCode = 1
         versionName = "1.0.0"
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
+        buildConfigField("String", "PULSO_API_URL", "\"$pulsoApiUrl\"")
     }
 
     buildTypes {

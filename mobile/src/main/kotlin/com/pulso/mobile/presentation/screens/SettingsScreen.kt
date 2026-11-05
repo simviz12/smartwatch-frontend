@@ -88,11 +88,15 @@ fun SettingsScreen(
     onOpenLab: () -> Unit,
     onOpenDiagnostics: () -> Unit,
     onRevokeConsent: () -> Unit,
-    onWipeData: () -> Unit
+    onWipeData: () -> Unit,
+    accountName: String = "",
+    accountEmail: String = "",
+    onSignOut: () -> Unit = {}
 ) {
     val c = Pulso.colors
     var showAdvanced by rememberSaveable { mutableStateOf(false) }
     var confirmWithdraw by remember { mutableStateOf(false) }
+    var confirmSignOut by remember { mutableStateOf(false) }
     val fmt: (Int, Int) -> String = { h, m -> String.format(Locale.US, "%02d:%02d", h, m) }
     val update: (StressConfig) -> Unit = {
         onUpdateThresholds(it.hrZThreshold, it.hrvZThreshold, it.hrOnlyZThreshold, it.consecutiveWindowsRuleA, it.consecutiveWindowsRuleB, it.cooldownMinutes, it.dailyCap)
@@ -103,6 +107,29 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         ScreenHeader(title = tr("Ajustes", "Settings"))
+
+        if (accountEmail.isNotBlank()) {
+            SectionLabel(tr("Cuenta", "Account"), Modifier.padding(top = 4.dp))
+            PulsoCard(modifier = Modifier.reveal(0), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        Modifier.size(44.dp).clip(androidx.compose.foundation.shape.CircleShape).background(c.primarySoft),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(accountName.ifBlank { accountEmail }.take(1).uppercase(), style = PulsoType.title, color = c.primary)
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                        Text(accountName.ifBlank { tr("Tu cuenta", "Your account") }, style = PulsoType.label, color = c.onSurface)
+                        Text(accountEmail, style = PulsoType.caption, color = c.muted)
+                    }
+                    PulsoButton(
+                        tr("Salir", "Sign out"), { confirmSignOut = true },
+                        style = PulsoButtonStyle.Ghost, height = 40.dp,
+                        textStyle = PulsoType.chip.copy(fontWeight = FontWeight.ExtraBold)
+                    )
+                }
+            }
+        }
 
         SectionLabel(tr("Apariencia", "Appearance"), Modifier.padding(top = 4.dp))
         PulsoCard(modifier = Modifier.reveal(1), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)) {
@@ -269,6 +296,20 @@ fun SettingsScreen(
             style = PulsoButtonStyle.DangerGhost,
             height = 48.dp,
             textStyle = PulsoType.button.copy(fontSize = 14.sp)
+        )
+    }
+
+    if (confirmSignOut) {
+        PulsoConfirmSheet(
+            icon = PulsoIcons.Shield,
+            title = tr("¿Cerrar sesión?", "Sign out?"),
+            body = tr(
+                "Tendrás que volver a entrar con tu correo y contraseña. Tus mediciones se quedan en este celular.",
+                "You’ll need your e-mail and password to sign in again. Your readings stay on this phone."
+            ),
+            confirmLabel = tr("Cerrar sesión", "Sign out"),
+            onConfirm = { confirmSignOut = false; onSignOut() },
+            onDismiss = { confirmSignOut = false }
         )
     }
 

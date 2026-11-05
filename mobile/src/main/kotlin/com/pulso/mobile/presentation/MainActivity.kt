@@ -133,7 +133,6 @@ private fun screenOrder(tab: Int): Int = when (tab) {
 }
 
 private const val PREFS = "pulso_ui"
-private const val KEY_THEME = "theme_mode"
 private const val KEY_LANG = "language"
 
 @Composable
@@ -144,9 +143,8 @@ fun PulsoApp(
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
-    var themeMode by remember {
-        mutableStateOf(runCatching { ThemeMode.valueOf(prefs.getString(KEY_THEME, ThemeMode.DARK.name)!!) }.getOrDefault(ThemeMode.DARK))
-    }
+    // The app always opens in the light theme; the user can switch it during the session.
+    var themeMode by remember { mutableStateOf(ThemeMode.LIGHT) }
     var language by remember {
         mutableStateOf(runCatching { AppLanguage.valueOf(prefs.getString(KEY_LANG, AppLanguage.ES.name)!!) }.getOrDefault(AppLanguage.ES))
     }
@@ -158,7 +156,7 @@ fun PulsoApp(
     }
     LaunchedEffect(light) { onSystemBars(light) }
 
-    val setTheme: (ThemeMode) -> Unit = { themeMode = it; prefs.edit().putString(KEY_THEME, it.name).apply() }
+    val setTheme: (ThemeMode) -> Unit = { themeMode = it }
     val setLanguage: (AppLanguage) -> Unit = { language = it; prefs.edit().putString(KEY_LANG, it.name).apply() }
 
     PulsoTheme(colors = if (light) LightPulsoColors else DarkPulsoColors, language = language) {
@@ -186,6 +184,10 @@ private fun PulsoNavigation(
     onLanguage: (AppLanguage) -> Unit
 ) {
     val c = com.pulso.mobile.presentation.theme.Pulso.colors
+    val context = LocalContext.current
+    val auth = remember { com.pulso.mobile.data.auth.AuthRepository.getInstance(context) }
+    val session by auth.session.collectAsState()
+    LaunchedEffect(session?.token) { auth.refreshProfile() }
     val uiState by viewModel.uiState.collectAsState()
     val diagnostics by viewModel.diagnosticsState.collectAsState()
     val todayWindows by viewModel.todayWindows.collectAsState()
@@ -205,6 +207,17 @@ private fun PulsoNavigation(
     LaunchedEffect(language) { chatManager.initInitialGreeting(language.name) }
 
     Box(Modifier.fillMaxSize().background(c.bg)) {
+        if (session == null) {
+            Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+                com.pulso.mobile.presentation.screens.LoginScreen(
+                    auth = auth,
+                    language = language,
+                    onLanguage = onLanguage,
+                    onToggleTheme = { onTheme(if (isLight) ThemeMode.DARK else ThemeMode.LIGHT) }
+                )
+            }
+            return@Box
+        }
         if (!diagnostics.consentGranted) {
             Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
                 OnboardingScreen(
@@ -315,7 +328,10 @@ private fun PulsoNavigation(
                             onOpenLab = { viewModel.selectTab(Tabs.LAB) },
                             onOpenDiagnostics = { diagnosticsReturn = Tabs.SETTINGS; viewModel.selectTab(Tabs.DIAGNOSTICS) },
                             onRevokeConsent = { viewModel.revokeConsent() },
-                            onWipeData = { viewModel.wipeAllUserData() }
+                            onWipeData = { viewModel.wipeAllUserData() },
+                            accountName = session?.name.orEmpty(),
+                            accountEmail = session?.email.orEmpty(),
+                            onSignOut = { auth.signOut() }
                         )
                         Tabs.BASELINE -> BaselineScreen(
                             baseline = baseline,
