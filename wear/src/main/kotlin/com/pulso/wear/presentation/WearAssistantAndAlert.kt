@@ -120,8 +120,9 @@ fun VoiceAssistantScreen(manager: WearAssistantManager, onBreathe: () -> Unit) {
                     val halo = 1f + if (state.phase == AssistantPhase.LISTENING) 0.12f * level else 0.04f * abs(sin(n * 0.5f))
                     Box(Modifier.size(62.dp).scale(halo).clip(CircleShape).background(WearColors.Hrv.copy(alpha = 0.10f)))
                     Box(
-                        Modifier.size(50.dp).clip(CircleShape).background(WearColors.Primary.copy(alpha = 0.14f))
-                            .border(1.dp, WearColors.Primary.copy(alpha = 0.5f), CircleShape)
+                        Modifier.size(50.dp).clip(CircleShape)
+                            .background(androidx.compose.ui.graphics.Brush.radialGradient(listOf(WearColors.Calm.copy(alpha = 0.28f), WearColors.Hrv.copy(alpha = 0.08f))))
+                            .border(1.dp, WearColors.Calm.copy(alpha = 0.45f), CircleShape)
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(34.dp)) {
                         repeat(7) { i ->
@@ -134,7 +135,7 @@ fun VoiceAssistantScreen(manager: WearAssistantManager, onBreathe: () -> Unit) {
                             }
                             Box(
                                 Modifier.width(4.dp).height((6 + 28 * motion * shape).dp).clip(CircleShape)
-                                    .background(if (i % 2 == 0) WearColors.Primary else WearColors.Hrv)
+                                    .background(if (i % 2 == 0) WearColors.Calm else WearColors.Hrv)
                             )
                         }
                     }
@@ -189,7 +190,7 @@ fun VoiceAssistantScreen(manager: WearAssistantManager, onBreathe: () -> Unit) {
                         else -> WearRoundButton(WearIcons.Mic, "Hablar", start, size = 48.dp, background = WearColors.Primary, tint = WearColors.OnPrimary)
                     }
                     if (state.suggestsBreathing && !active) {
-                        WearRoundButton(WearIcons.Wind, "Respirar", onBreathe, size = 48.dp, background = WearColors.Surface, tint = WearColors.Primary)
+                        WearRoundButton(WearIcons.Wind, "Respirar", onBreathe, size = 48.dp, tint = WearColors.Calm)
                     }
                 }
             }
@@ -218,10 +219,19 @@ fun StressAlertScreen(
     val listState = rememberScalingLazyListState()
 
     Box(Modifier.fillMaxSize().background(WearColors.Bg)) {
+        val pulse = androidx.compose.animation.core.rememberInfiniteTransition(label = "alertGlow")
+        val glowAlpha by pulse.animateFloat(0.10f, 0.26f, infiniteRepeatable(tween(1400), RepeatMode.Reverse), label = "glowA")
         Canvas(Modifier.fillMaxSize()) {
+            drawCircle(
+                androidx.compose.ui.graphics.Brush.radialGradient(
+                    listOf(WearColors.Heart.copy(alpha = glowAlpha), androidx.compose.ui.graphics.Color.Transparent),
+                    center = Offset(size.width / 2, size.height * 0.32f), radius = size.minDimension * 0.55f
+                ),
+                radius = size.minDimension * 0.55f, center = Offset(size.width / 2, size.height * 0.32f)
+            )
             val stroke = 5.dp.toPx()
             val arc = Size(size.width - stroke, size.height - stroke)
-            drawArc(WearColors.Heart.copy(alpha = 0.22f), 0f, 360f, false, Offset(stroke / 2, stroke / 2), arc, style = Stroke(stroke))
+            drawArc(WearColors.Track, 0f, 360f, false, Offset(stroke / 2, stroke / 2), arc, style = Stroke(stroke))
             drawArc(WearColors.Heart, -90f, 360f * remaining.value, false, Offset(stroke / 2, stroke / 2), arc, style = Stroke(stroke, cap = StrokeCap.Round))
         }
         ScalingLazyColumn(
@@ -231,25 +241,15 @@ fun StressAlertScreen(
             verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             item {
-                Box(Modifier.padding(top = 8.dp).size(30.dp).clip(CircleShape).background(WearColors.Heart.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
-                    Icon(WearIcons.Bolt, null, tint = WearColors.Heart, modifier = Modifier.size(17.dp))
+                Box(Modifier.wearReveal(0).padding(top = 8.dp).size(34.dp).clip(CircleShape).background(WearColors.Heart.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
+                    Icon(WearIcons.Bolt, null, tint = WearColors.Heart, modifier = Modifier.size(18.dp))
                 }
             }
-            item { Text("Tensión detectada", style = WearType.title, textAlign = TextAlign.Center) }
-            item { Text(subtitle, style = WearType.body.copy(lineHeight = 16.sp), color = WearColors.Muted, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 14.dp)) }
+            item { Text("Tensión detectada", style = WearType.title, textAlign = TextAlign.Center, modifier = Modifier.wearReveal(1)) }
+            item { Text(subtitle, style = WearType.body.copy(lineHeight = 16.sp), color = WearColors.Muted, textAlign = TextAlign.Center, modifier = Modifier.wearReveal(2).padding(horizontal = 14.dp)) }
+            item { EdgeButton("Respirar 1 min", onBreathe, Modifier.wearReveal(3), icon = WearIcons.Wind) }
             item {
-                Row(
-                    Modifier.fillMaxWidth().height(48.dp).clip(CircleShape).background(WearColors.Primary)
-                        .clickable(role = Role.Button, onClick = onBreathe),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(WearIcons.Wind, null, tint = WearColors.OnPrimary, modifier = Modifier.size(18.dp))
-                    Text("Respirar 1 min", style = WearType.label, color = WearColors.OnPrimary)
-                }
-            }
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.wearReveal(4), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     AlertSecondary("Ahora no", onNotNow, Modifier.weight(1f))
                     AlertSecondary("No lo era", onNotStressed, Modifier.weight(1f))
                 }
@@ -262,7 +262,7 @@ fun StressAlertScreen(
 @Composable
 private fun AlertSecondary(label: String, onClick: () -> Unit, modifier: Modifier) {
     Box(
-        modifier.height(44.dp).clip(CircleShape).background(WearColors.Surface).clickable(role = Role.Button, onClick = onClick),
+        modifier.height(46.dp).glass(CircleShape).clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Text(label, style = WearType.label.copy(fontSize = 13.sp))

@@ -23,25 +23,34 @@ import androidx.wear.compose.material.Typography
 import com.pulso.wear.R
 
 /**
- * "Marea" tokens for Wear OS. Pure black background for OLED, large tap targets
- * (≥ 48 dp) and 12 sp minimum text, per the design handoff.
+ * "Marea Noche" tokens for Wear OS: monochrome and premium. Pure black for OLED,
+ * graphite glass surfaces with hairline borders, white primary actions with black text,
+ * and colour reserved for data (calm, pulse, HRV, alert) in soft pastels.
+ * Tap targets ≥ 48 dp and 12 sp minimum text.
  */
 object WearColors {
     val Bg = Color(0xFF000000)
-    val Surface = Color(0xFF161C21)
-    val Surface2 = Color(0xFF202930)
-    val Track = Color(0xFF2A353E)
-    val Ring = Color(0xFF3A4650)
-    val Text = Color(0xFFEEF4F7)
-    val Muted = Color(0xFF9AA8B2)
-    val Dim = Color(0xFF7F8E99)
-    val Primary = Color(0xFF3DD6B5)
-    val OnPrimary = Color(0xFF03221B)
-    val Heart = Color(0xFFFF7A66)
-    val Hrv = Color(0xFFA3AEFF)
-    val Sky = Color(0xFF5BC8E8)
-    val Warn = Color(0xFFF5B94A)
-    val OnWarn = Color(0xFF1F1400)
+    val Surface = Color(0xFF15171B)
+    val SurfaceHigh = Color(0xFF1E2127)
+    val Surface2 = Color(0xFF24282F)
+    val Track = Color(0xFF2B3038)
+    val Ring = Color(0xFF3B414B)
+    val Hairline = Color(0x1FFFFFFF)
+    val Text = Color(0xFFF4F6F8)
+    val Muted = Color(0xFF9198A4)
+    val Dim = Color(0xFF6E7582)
+
+    /** Primary action: white capsule with near-black text. */
+    val Primary = Color(0xFFF4F6F8)
+    val OnPrimary = Color(0xFF0B0D10)
+
+    /** Data colours (pastel, never the only signal: always paired with text). */
+    val Calm = Color(0xFF8FEBD3)
+    val Heart = Color(0xFFFF8A7D)
+    val Hrv = Color(0xFFB4BBFF)
+    val Sky = Color(0xFF9AD8FF)
+    val Warn = Color(0xFFFFCF7A)
+    val OnWarn = Color(0xFF221800)
 }
 
 private fun manrope(weight: Int) = Font(
@@ -64,13 +73,13 @@ object WearType {
 }
 
 private val PulsoWearColors = Colors(
-    primary = WearColors.Primary,
-    primaryVariant = Color(0xFF0F766E),
+    primary = WearColors.Calm,
+    primaryVariant = Color(0xFF2E7D6B),
     secondary = WearColors.Hrv,
     background = WearColors.Bg,
     surface = WearColors.Surface,
     error = WearColors.Heart,
-    onPrimary = WearColors.OnPrimary,
+    onPrimary = Color(0xFF06201A),
     onSecondary = Color(0xFF0B1240),
     onBackground = WearColors.Text,
     onSurface = WearColors.Text,

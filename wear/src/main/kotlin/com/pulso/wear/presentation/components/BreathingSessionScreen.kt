@@ -66,7 +66,13 @@ import com.pulso.core.breathing.BreathingSessionSnapshot
 import com.pulso.core.breathing.BreathingSessionState
 import com.pulso.core.breathing.TimelineSegmentType
 import com.pulso.wear.data.breathing.BreathingDisplayMode
+import com.pulso.wear.presentation.EdgeButton
+import com.pulso.wear.presentation.Kicker
 import com.pulso.wear.presentation.WearRoundButton
+import com.pulso.wear.presentation.glass
+import com.pulso.wear.presentation.wearReveal
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.graphics.Brush
 import com.pulso.wear.presentation.theme.WearColors
 import com.pulso.wear.presentation.theme.WearIcons
 import com.pulso.wear.presentation.theme.WearType
@@ -166,7 +172,7 @@ private fun BreathingSetupScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            item { Text("CALMA GUIADA", style = WearType.kicker, color = WearColors.Primary, modifier = Modifier.padding(top = 12.dp)) }
+            item { Kicker("Calma guiada", Modifier.padding(top = 12.dp).wearReveal(0)) }
             item {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     WearRoundButton(WearIcons.ChevronLeft, "Patrón anterior", { planIndex = (planIndex + WEAR_PLANS.size - 1) % WEAR_PLANS.size }, size = 36.dp)
@@ -180,13 +186,13 @@ private fun BreathingSetupScreen(
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     WEAR_PLANS.indices.forEach { i ->
-                        Box(Modifier.height(5.dp).width(if (i == planIndex) 14.dp else 5.dp).clip(CircleShape).background(if (i == planIndex) WearColors.Primary else WearColors.Track))
+                        Box(Modifier.height(5.dp).width(if (i == planIndex) 14.dp else 5.dp).clip(CircleShape).background(if (i == planIndex) WearColors.Calm else WearColors.Track))
                     }
                 }
             }
             item {
                 Row(
-                    Modifier.fillMaxWidth().height(48.dp).clip(CircleShape).background(WearColors.Surface).padding(horizontal = 6.dp),
+                    Modifier.fillMaxWidth().height(50.dp).glass(CircleShape).padding(horizontal = 5.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -197,7 +203,7 @@ private fun BreathingSetupScreen(
             }
             item {
                 Row(
-                    Modifier.fillMaxWidth().height(48.dp).clip(CircleShape).background(WearColors.Surface)
+                    Modifier.fillMaxWidth().height(50.dp).glass(CircleShape)
                         .clickable(role = Role.Switch, onClick = onToggleDisplayMode)
                         .padding(start = 14.dp, end = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -206,15 +212,15 @@ private fun BreathingSetupScreen(
                     Icon(WearIcons.Vibration, null, tint = WearColors.Hrv, modifier = Modifier.size(18.dp))
                     Text("Solo vibración", style = WearType.label.copy(fontSize = 13.sp), modifier = Modifier.weight(1f))
                     Box(
-                        Modifier.width(36.dp).height(22.dp).clip(CircleShape).background(if (vibrationOnly) WearColors.Primary else WearColors.Track).padding(3.dp),
+                        Modifier.width(36.dp).height(22.dp).clip(CircleShape).background(if (vibrationOnly) WearColors.Calm else WearColors.Track).padding(3.dp),
                         contentAlignment = if (vibrationOnly) Alignment.CenterEnd else Alignment.CenterStart
                     ) {
-                        Box(Modifier.size(16.dp).clip(CircleShape).background(if (vibrationOnly) WearColors.OnPrimary else WearColors.Muted))
+                        Box(Modifier.size(16.dp).clip(CircleShape).background(if (vibrationOnly) Color(0xFF06201A) else WearColors.Muted))
                     }
                 }
             }
             item {
-                WearRoundButton(WearIcons.Play, "Empezar", { onStart(plan.id, minutes) }, size = 52.dp, background = WearColors.Primary, tint = WearColors.OnPrimary)
+                EdgeButton("Empezar", { onStart(plan.id, minutes) }, icon = WearIcons.Play)
             }
             item { Spacer(Modifier.height(12.dp)) }
         }
@@ -224,7 +230,7 @@ private fun BreathingSetupScreen(
 @Composable
 private fun StepButton(symbol: String, onClick: () -> Unit) {
     Box(
-        Modifier.size(38.dp).clip(CircleShape).background(WearColors.Surface2).clickable(role = Role.Button, onClick = onClick)
+        Modifier.size(40.dp).clip(CircleShape).background(WearColors.Surface2).clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = symbol },
         contentAlignment = Alignment.Center
     ) {
@@ -276,24 +282,47 @@ private fun GuidedBreathingScreen(snapshot: BreathingSessionSnapshot?, plan: Bre
     val total = snapshot?.totalDurationMs ?: 0L
     val elapsed = snapshot?.elapsedTimeMs ?: 0L
     val left = ((total - elapsed) / 1000).coerceAtLeast(0)
-    val petals = listOf(WearColors.Primary, WearColors.Sky, WearColors.Hrv, WearColors.Primary, WearColors.Sky, WearColors.Hrv)
+    val glow = rememberInfiniteTransition(label = "glow")
+    val shimmer by glow.animateFloat(0.85f, 1f, infiniteRepeatable(tween(1800), RepeatMode.Reverse), label = "shimmer")
 
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize().padding(3.dp)) {
             val stroke = 4.dp.toPx()
             val arc = Size(size.width - stroke, size.height - stroke)
-            drawArc(WearColors.Surface, 0f, 360f, false, Offset(stroke / 2, stroke / 2), arc, style = Stroke(stroke))
+            drawArc(WearColors.Track, 0f, 360f, false, Offset(stroke / 2, stroke / 2), arc, style = Stroke(stroke))
             val frac = if (total > 0) (elapsed / total.toFloat()).coerceIn(0f, 1f) else 0f
-            drawArc(WearColors.Primary, -90f, 360f * frac, false, Offset(stroke / 2, stroke / 2), arc, style = Stroke(stroke, cap = StrokeCap.Round))
+            drawArc(WearColors.Text, -90f, 360f * frac, false, Offset(stroke / 2, stroke / 2), arc, style = Stroke(stroke, cap = StrokeCap.Round))
 
+            // Aurora orb: layered pastel gradients that expand on inhale and settle on exhale.
             val center = Offset(size.width / 2, size.height / 2)
-            val petalR = size.width * 0.19f * (0.55f + 0.45f * scale)
-            val dist = size.width * 0.11f * scale
-            petals.forEachIndexed { i, col ->
-                val a = (i * 60 + rotation) * PI / 180
-                drawCircle(col.copy(alpha = 0.34f), petalR, Offset(center.x + (cos(a) * dist).toFloat(), center.y + (sin(a) * dist).toFloat()))
-            }
-            drawCircle(Color.Black.copy(alpha = 0.35f), size.width * 0.14f * (0.6f + 0.4f * scale), center)
+            val maxR = size.minDimension * 0.36f
+            val r = maxR * (0.55f + 0.45f * scale)
+            drawCircle(
+                Brush.radialGradient(listOf(WearColors.Calm.copy(alpha = 0.28f * shimmer), Color.Transparent), center, r * 1.45f),
+                r * 1.45f, center
+            )
+            val a = rotation * PI / 180
+            val drift = r * 0.16f
+            drawCircle(
+                Brush.radialGradient(listOf(WearColors.Sky.copy(alpha = 0.55f), WearColors.Sky.copy(alpha = 0f)), Offset(center.x + (cos(a) * drift).toFloat(), center.y + (sin(a) * drift).toFloat()), r),
+                r, Offset(center.x + (cos(a) * drift).toFloat(), center.y + (sin(a) * drift).toFloat())
+            )
+            drawCircle(
+                Brush.radialGradient(listOf(WearColors.Hrv.copy(alpha = 0.5f), WearColors.Hrv.copy(alpha = 0f)), Offset(center.x - (cos(a) * drift).toFloat(), center.y - (sin(a) * drift).toFloat()), r * 0.92f),
+                r * 0.92f, Offset(center.x - (cos(a) * drift).toFloat(), center.y - (sin(a) * drift).toFloat())
+            )
+            drawCircle(
+                Brush.radialGradient(listOf(WearColors.Calm.copy(alpha = 0.95f), WearColors.Calm.copy(alpha = 0.35f), Color.Transparent), center, r * 0.78f),
+                r * 0.78f, center
+            )
+            // A thin light ring sweeping around the orb.
+            drawArc(
+                Brush.sweepGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.55f), Color.Transparent), center),
+                rotation * 3f, 120f, false,
+                Offset(center.x - r * 1.08f, center.y - r * 1.08f), Size(r * 2.16f, r * 2.16f),
+                style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round)
+            )
+            drawCircle(Color.Black.copy(alpha = 0.28f), r * 0.42f, center)
         }
         Text(
             "${planPattern(plan)} · ciclo ${snapshot?.currentCycle ?: 1} de ${snapshot?.totalCycles ?: 1}",
@@ -302,7 +331,14 @@ private fun GuidedBreathingScreen(snapshot: BreathingSessionSnapshot?, plan: Bre
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 18.dp)
         )
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
-            Text(if (paused) "En pausa" else phaseLabel(type), style = WearType.title)
+            androidx.compose.animation.AnimatedContent(
+                targetState = if (paused) "En pausa" else phaseLabel(type),
+                transitionSpec = {
+                    (androidx.compose.animation.fadeIn(tween(320)) + androidx.compose.animation.scaleIn(tween(320), initialScale = 0.85f))
+                        .togetherWith(androidx.compose.animation.fadeOut(tween(200)))
+                },
+                label = "phase"
+            ) { label -> Text(label, style = WearType.title) }
             Text("$count", style = WearType.bigNumber)
         }
         Column(
@@ -311,8 +347,8 @@ private fun GuidedBreathingScreen(snapshot: BreathingSessionSnapshot?, plan: Bre
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                WearRoundButton(if (paused) WearIcons.Play else WearIcons.Pause, if (paused) "Reanudar" else "Pausar", onPauseResume, size = 36.dp)
-                if (paused) WearRoundButton(WearIcons.Stop, "Terminar", onStop, size = 36.dp, tint = WearColors.Heart)
+                WearRoundButton(if (paused) WearIcons.Play else WearIcons.Pause, if (paused) "Reanudar" else "Pausar", onPauseResume, size = 40.dp, background = if (paused) WearColors.Primary else null, tint = if (paused) WearColors.OnPrimary else WearColors.Text)
+                if (paused) WearRoundButton(WearIcons.Stop, "Terminar", onStop, size = 40.dp, tint = WearColors.Heart)
             }
             Text("%d:%02d".format(left / 60, left % 60), style = WearType.time, color = WearColors.Muted)
         }
@@ -399,9 +435,9 @@ private fun FeelingScreen(
         ) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 12.dp)) {
-                    Icon(WearIcons.Check, null, tint = WearColors.Primary, modifier = Modifier.size(16.dp))
+                    Icon(WearIcons.Check, null, tint = WearColors.Calm, modifier = Modifier.size(16.dp))
                     val finished = totalCycles == 0 || completedCycles >= totalCycles
-                    Text(if (finished) "Sesión completa" else "Sesión terminada", style = WearType.label.copy(fontSize = 13.sp), color = WearColors.Primary)
+                    Text(if (finished) "Sesión completa" else "Sesión terminada", style = WearType.label.copy(fontSize = 13.sp), color = WearColors.Calm)
                 }
             }
             item {
@@ -415,7 +451,7 @@ private fun FeelingScreen(
             item { Text("¿Cómo te sientes?", style = WearType.title, textAlign = TextAlign.Center) }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Face("Mejor", WearColors.Primary, Mouth.SMILE) { onSelect("BETTER") }
+                    Face("Mejor", WearColors.Calm, Mouth.SMILE) { onSelect("BETTER") }
                     Face("Igual", WearColors.Hrv, Mouth.FLAT) { onSelect("SAME") }
                     Face("Peor", WearColors.Warn, Mouth.FROWN) { onSelect("WORSE") }
                 }

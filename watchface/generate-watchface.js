@@ -18,9 +18,9 @@ for (let i = 0; i < 48; i++) {
         <Expressions>
           <Expression name="past"><![CDATA[(([HOUR_0_23] * 60 + [MINUTE]) / 30) >= ${i}]]></Expression>
         </Expressions>
-        <Compare expression="past">${line('#ff3DD6B5')}
+        <Compare expression="past">${line('#E6F4F6F8')}
         </Compare>
-        <Default>${line('#ff2A353E')}
+        <Default>${line('#ff2B3038')}
         </Default>
       </Condition>`);
 }
@@ -36,20 +36,20 @@ const bubble = (slotId, cx, provider, ring) => {
         <PartDraw x="0" y="0" width="${r * 2}" height="${r * 2}">
           <Variant mode="AMBIENT" target="alpha" value="0" />
           <Ellipse x="2" y="2" width="${r * 2 - 4}" height="${r * 2 - 4}">
-            <Fill color="#ff161C21" />
+            <Fill color="#ff15171B" />
             <Stroke color="${ring}" thickness="3" />
           </Ellipse>
         </PartDraw>
         <PartText x="0" y="22" width="${r * 2}" height="40">
           <Text align="CENTER">
-            <Font family="SYNC_TO_DEVICE" size="32" weight="BOLD" color="#ffEEF4F7">
+            <Font family="SYNC_TO_DEVICE" size="32" weight="BOLD" color="#ffF4F6F8">
               <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template>
             </Font>
           </Text>
         </PartText>
         <PartText x="0" y="60" width="${r * 2}" height="24">
           <Text align="CENTER">
-            <Font family="SYNC_TO_DEVICE" size="16" weight="BOLD" color="#ff9AA8B2">
+            <Font family="SYNC_TO_DEVICE" size="16" weight="BOLD" color="#ff9198A4">
               <Template>%s<Parameter expression="[COMPLICATION.TITLE]" /></Template>
             </Font>
           </Text>
@@ -71,7 +71,7 @@ const xml = `<?xml version="1.0" encoding="utf-8"?>
     <PartText x="0" y="76" width="450" height="34">
       <Variant mode="AMBIENT" target="alpha" value="160" />
       <Text align="CENTER">
-        <Font family="SYNC_TO_DEVICE" size="24" weight="BOLD" color="#ff3DD6B5">
+        <Font family="SYNC_TO_DEVICE" size="24" weight="BOLD" color="#ff8FEBD3">
           <Template>%s %s<Parameter expression="[DAY_OF_WEEK_S]" /><Parameter expression="[DAY]" /></Template>
         </Font>
       </Text>
@@ -85,7 +85,7 @@ const xml = `<?xml version="1.0" encoding="utf-8"?>
       <Compare expression="h24">
         <PartText x="0" y="108" width="450" height="128">
           <Text align="CENTER">
-            <Font family="SYNC_TO_DEVICE" size="112" weight="BOLD" color="#ffEEF4F7">
+            <Font family="SYNC_TO_DEVICE" size="112" weight="BOLD" color="#ffF4F6F8">
               <Template>%s:%s<Parameter expression="[HOUR_0_23]" /><Parameter expression="[MINUTE_Z]" /></Template>
             </Font>
           </Text>
@@ -94,15 +94,15 @@ const xml = `<?xml version="1.0" encoding="utf-8"?>
       <Default>
         <PartText x="0" y="108" width="450" height="128">
           <Text align="CENTER">
-            <Font family="SYNC_TO_DEVICE" size="112" weight="BOLD" color="#ffEEF4F7">
+            <Font family="SYNC_TO_DEVICE" size="112" weight="BOLD" color="#ffF4F6F8">
               <Template>%s:%s<Parameter expression="[HOUR_1_12]" /><Parameter expression="[MINUTE_Z]" /></Template>
             </Font>
           </Text>
         </PartText>
       </Default>
     </Condition>
-${bubble(0, 164, 'com.pulso/com.pulso.wear.complication.PulseComplicationService', '#59FF7A66')}
-${bubble(1, 286, 'com.pulso/com.pulso.wear.complication.HrvComplicationService', '#59A3AEFF')}
+${bubble(0, 164, 'com.pulso/com.pulso.wear.complication.PulseComplicationService', '#59FF8A7D')}
+${bubble(1, 286, 'com.pulso/com.pulso.wear.complication.HrvComplicationService', '#59B4BBFF')}
 
     <ComplicationSlot slotId="2" x="140" y="362" width="170" height="44" supportedTypes="SHORT_TEXT" isCustomizable="TRUE">
       <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="SHORT_TEXT"
@@ -112,15 +112,15 @@ ${bubble(1, 286, 'com.pulso/com.pulso.wear.complication.HrvComplicationService',
         <PartDraw x="0" y="0" width="170" height="44">
           <Variant mode="AMBIENT" target="alpha" value="0" />
           <RoundRectangle x="0" y="0" width="170" height="44" cornerRadiusX="22" cornerRadiusY="22">
-            <Fill color="#293DD6B5" />
+            <Fill color="#298FEBD3" />
           </RoundRectangle>
           <Ellipse x="22" y="17" width="10" height="10">
-            <Fill color="#ff3DD6B5" />
+            <Fill color="#ff8FEBD3" />
           </Ellipse>
         </PartDraw>
         <PartText x="30" y="6" width="130" height="32">
           <Text align="CENTER">
-            <Font family="SYNC_TO_DEVICE" size="22" weight="BOLD" color="#ff3DD6B5">
+            <Font family="SYNC_TO_DEVICE" size="22" weight="BOLD" color="#ff8FEBD3">
               <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template>
             </Font>
           </Text>

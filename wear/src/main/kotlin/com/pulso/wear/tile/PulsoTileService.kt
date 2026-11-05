@@ -34,12 +34,13 @@ import kotlinx.coroutines.launch
 
 private const val RESOURCES_VERSION = "1"
 
-private const val PRIMARY = 0xFF3DD6B5.toInt()
-private const val ON_PRIMARY = 0xFF03221B.toInt()
-private const val WARN = 0xFFF5B94A.toInt()
-private const val HEART = 0xFFFF7A66.toInt()
-private const val TEXT = 0xFFEEF4F7.toInt()
-private const val MUTED = 0xFF9AA8B2.toInt()
+private const val PRIMARY = 0xFF8FEBD3.toInt()
+private const val BUTTON = 0xFFF4F6F8.toInt()
+private const val ON_PRIMARY = 0xFF0B0D10.toInt()
+private const val WARN = 0xFFFFCF7A.toInt()
+private const val HEART = 0xFFFF8A7D.toInt()
+private const val TEXT = 0xFFF4F6F8.toInt()
+private const val MUTED = 0xFF9198A4.toInt()
 
 /** "Tile Pulso" from the design: current state, pulse/HRV and a one-tap breathing shortcut. */
 class PulsoTileService : TileService() {
@@ -142,7 +143,7 @@ internal fun buildTile(
         .addContent(LayoutElementBuilders.Spacer.Builder().setHeight(dp(8f)).build())
         .addContent(
             CompactChip.Builder(context, "Respirar", openBreathing, device)
-                .setChipColors(ChipColors(PRIMARY, ON_PRIMARY))
+                .setChipColors(ChipColors(BUTTON, ON_PRIMARY))
                 .build()
         )
         .build()
