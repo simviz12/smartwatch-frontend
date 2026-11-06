@@ -6,7 +6,7 @@ Pulso tiene tres piezas:
 
 | Pieza | Repositorio | Dónde vive |
 |---|---|---|
-| Backend (API de inicio de sesión) | [`smartwatch-backend`](https://github.com/simviz12/smartwatch-backend) | **Render** (gratis) |
+| Backend (inicio de sesión y asistente con IA) | [`smartwatch-backend`](https://github.com/simviz12/smartwatch-backend) | **Render** (gratis) |
 | App del celular | [`smartwatch-frontend`](https://github.com/simviz12/smartwatch-frontend) › `mobile` | APK en **GitHub Releases** |
 | App, Tile y esfera del reloj | [`smartwatch-frontend`](https://github.com/simviz12/smartwatch-frontend) › `wear` y `watchface` | APK en **GitHub Releases** |
 
@@ -38,6 +38,18 @@ Tiempo total: **unos 20 minutos**. No necesitas instalar nada en tu computador: 
 
 > Si `/health` dice `"database":"down"`, espera un minuto (la base de datos puede seguir arrancando) y recarga.
 
+### Paso 1b · Activar el asistente con IA (opcional, ≈ 2 min)
+
+La clave de Gemini se guarda **solo en el servidor**: el celular le pregunta al backend y el backend llama a Gemini. Así la clave nunca queda dentro del APK público.
+
+1. Crea una clave gratis en [Google AI Studio](https://aistudio.google.com/apikey).
+2. En Render › `pulso-api` › **Environment** › **Add Environment Variable**:
+   - **Key:** `GEMINI_API_KEY` · **Value:** tu clave.
+3. Guarda. Render reinicia el servicio solo.
+4. Comprueba `https://pulso-api-xxxx.onrender.com/v1/assistant/status` → `{"aiConfigured":true}`.
+
+El asistente exige sesión iniciada, limita a **30 mensajes por hora** por usuario y los mensajes de riesgo alto no se envían al modelo: responde directo con la línea 106 / 123.
+
 ---
 
 ## Paso 2 · Conectar la app a tu backend (≈ 3 min)
@@ -49,10 +61,7 @@ La app necesita saber la URL de tu backend. Se la damos a GitHub como *secret* p
    - **Name:** `PULSO_API_URL`
    - **Secret:** la URL del paso 1.8, **sin** `/` al final (ej. `https://pulso-api-xxxx.onrender.com`)
    - Pulsa **Add secret**.
-3. *(Opcional)* Para que el asistente responda con IA, crea otro secret:
-   - **Name:** `GEMINI_API_KEY`
-   - **Secret:** tu clave de [Google AI Studio](https://aistudio.google.com/apikey).
-   - Ten en cuenta que la clave queda dentro del APK.
+3. **No** pongas la clave de Gemini en GitHub: va en Render (paso 1b) y nunca dentro del APK.
 
 ---
 
@@ -107,6 +116,8 @@ La app necesita saber la URL de tu backend. Se la damos a GitHub como *secret* p
 | Contraseña incorrecta | "Correo o contraseña incorrectos." |
 | Crear cuenta con un correo ya usado | "Ya existe una cuenta con ese correo." |
 | Ajustes › Cuenta › Salir | Vuelve a la pantalla de inicio de sesión |
+| `/v1/assistant/status` | `{"aiConfigured":true}` si pusiste `GEMINI_API_KEY` en Render |
+| Pestaña Asistente: escribir "tengo estrés" | Respuesta empática generada por IA |
 
 ---
 
@@ -119,6 +130,7 @@ La app necesita saber la URL de tu backend. Se la damos a GitHub como *secret* p
 | El primer inicio tarda ~1 minuto | Normal en el plan gratuito: Render duerme el servicio tras 15 min sin uso. |
 | Render: el deploy falla en `prisma migrate deploy` | La base de datos aún no estaba lista. En `pulso-api` pulsa **Manual Deploy › Deploy latest commit**. |
 | Olvidé la contraseña demo | La cuenta demo solo se crea la primera vez; cambiar `DEMO_PASSWORD` después no la modifica. Lo más simple: crea una cuenta nueva desde la app con **Crear cuenta**. |
+| El asistente da siempre la misma respuesta | El backend no tiene `GEMINI_API_KEY` (mira `/v1/assistant/status`) o no hay sesión iniciada. Revisa el paso 1b. |
 | Android bloquea la instalación | Activa "Instalar apps desconocidas" para el navegador o el gestor de archivos que usaste. |
 
 ---

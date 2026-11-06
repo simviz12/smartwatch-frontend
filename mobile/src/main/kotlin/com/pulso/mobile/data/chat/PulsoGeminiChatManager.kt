@@ -57,8 +57,13 @@ class PulsoGeminiChatManager(private val context: Context) : TextToSpeech.OnInit
             System.getProperty("GEMINI_API_KEY") ?: System.getenv("GEMINI_API_KEY") ?: ""
         }
 
-    /** True when a Gemini key was configured; without it the assistant answers with calm fallbacks. */
-    val isAiConfigured: Boolean get() = apiKey.isNotBlank()
+    private val auth = com.pulso.mobile.data.auth.AuthRepository.getInstance(context)
+
+    /**
+     * True when AI replies are available: through the Pulso backend (key kept on the server) or,
+     * for local development only, a key in local.properties. Otherwise calm fallbacks are used.
+     */
+    val isAiConfigured: Boolean get() = auth.isServerConfigured || apiKey.isNotBlank()
     private val modelEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
     private val scope = CoroutineScope(Dispatchers.Default)
@@ -188,7 +193,54 @@ class PulsoGeminiChatManager(private val context: Context) : TextToSpeech.OnInit
         return reply
     }
 
+    /**
+     * Asks the Pulso backend, which calls Gemini with a key that never leaves the server.
+     * Returns null when the backend can't answer, so the caller can fall back.
+     */
+    private fun callBackendAssistant(userPrompt: String, language: String): String? {
+        val session = auth.session.value ?: return null
+        if (!auth.isServerConfigured) return null
+        return try {
+            val conn = URL(auth.baseUrl + "/v1/assistant/reply").openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            conn.setRequestProperty("Authorization", "Bearer " + session.token)
+            conn.doOutput = true
+            conn.connectTimeout = 70_000 // free Render instances can take ~1 min to wake up
+            conn.readTimeout = 70_000
+
+            // Last turns (excluding the message just added) give the model context.
+            val previous = _messages.value.dropLast(1).filter { !it.isStreaming }.takeLast(8)
+            val payload = JSONObject().apply {
+                put("message", userPrompt.take(2000))
+                put("language", if (language == "ES") "ES" else "EN")
+                put("history", JSONArray().apply {
+                    previous.forEach { m ->
+                        put(JSONObject().put("role", if (m.sender == "user") "user" else "assistant").put("text", m.text.take(2000)))
+                    }
+                })
+            }
+            OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { it.write(payload.toString()) }
+
+            val code = conn.responseCode
+            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+            val body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+            when {
+                code in 200..299 -> JSONObject(body).optString("reply").trim().ifBlank { null }
+                code == 401 -> { auth.signOut(); null }
+                // Rate limit has a friendly message meant for the user.
+                code == 429 -> runCatching { JSONObject(body).getJSONObject("error").getString("message") }.getOrNull()
+                else -> { Log.w("GeminiChat", "Backend assistant HTTP $code"); null }
+            }
+        } catch (e: Exception) {
+            Log.w("GeminiChat", "Backend assistant unreachable: ${e.javaClass.simpleName}")
+            null
+        }
+    }
+
     private suspend fun callGeminiApi(userPrompt: String, language: String): String = withContext(Dispatchers.IO) {
+        callBackendAssistant(userPrompt, language)?.let { return@withContext it }
+        if (apiKey.isBlank()) return@withContext fallbackReply(language)
         try {
             val url = URL("$modelEndpoint?key=$apiKey")
             val conn = url.openConnection() as HttpURLConnection
@@ -246,8 +298,12 @@ class PulsoGeminiChatManager(private val context: Context) : TextToSpeech.OnInit
             Log.e("GeminiChat", "Failed to contact Gemini API", e)
         }
 
-        // Calming empathetic fallback
-        return@withContext if (language == "ES") {
+        fallbackReply(language)
+    }
+
+    /** Calming empathetic fallback when no AI is reachable. */
+    private fun fallbackReply(language: String): String {
+        return if (language == "ES") {
             "Estoy aquí contigo. Noto la tensión en tu cuerpo; respiremos despacio juntos inhalando en 4 segundos y exhalando en 6."
         } else {
             "I am right here with you. Take a slow, gentle breath with me, inhaling for 4 seconds and exhaling for 6."
